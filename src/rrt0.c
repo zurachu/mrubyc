@@ -3,8 +3,8 @@
   Realtime multitask monitor for mruby/c
 
   <pre>
-  Copyright (C) 2016 Kyushu Institute of Technology.
-  Copyright (C) 2016 Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-2017 Kyushu Institute of Technology.
+  Copyright (C) 2015-2017 Shimane IT Open-Innovation Center.
 
   This file is distributed under BSD 3-Clause License.
   </pre>
@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>      // for DEBUG
 
 
 /***** Local headers ********************************************************/
@@ -289,7 +290,11 @@ void mrbc_tick(void)
      (tcb->state == TASKSTATE_RUNNING) &&
      (tcb->timeslice > 0)) {
     tcb->timeslice--;
-    if( tcb->timeslice == 0 ) tcb->vm->flag_preemption = 1;
+    //    if( tcb->timeslice == 0 ) tcb->vm->flag_preemption = 1;
+    if( tcb->timeslice == 0 ) {
+      tcb->vm->flag_preemption = 1;
+      //      printf("<<PREEMPT>> TCB:%p\n", tcb );
+    }
   }
 
   // 待ちタスクキューから、ウェイクアップすべきタスクを探す
@@ -298,7 +303,7 @@ void mrbc_tick(void)
     MrbcTcb *t = tcb;
     tcb = tcb->next;
 
-    if( t->wakeup_tick == tick_ ) {
+    if( t->reason == TASKREASON_SLEEP && t->wakeup_tick == tick_ ) {
       q_delete_task(t);
       t->state     = TASKSTATE_READY;
       t->timeslice = TIMESLICE_TICK;
@@ -315,6 +320,7 @@ void mrbc_tick(void)
     }
   }
 }
+
 
 
 //================================================================
@@ -461,6 +467,7 @@ void mrbc_sleep_ms(MrbcTcb *tcb, uint32_t ms)
   q_delete_task(tcb);
   tcb->timeslice   = 0;
   tcb->state       = TASKSTATE_WAITING;
+  tcb->reason      = TASKREASON_SLEEP;
   tcb->wakeup_tick = tick_ + ms;
   q_insert_task(tcb);
   hal_enable_irq();
@@ -530,6 +537,134 @@ void mrbc_resume_task(MrbcTcb *tcb)
 }
 
 
+//================================================================
+/*! mutex initialize
+
+*/
+MrbcMutex * mrbc_mutex_init( MrbcMutex *mutex )
+{
+  if( mutex == NULL ) {
+    mutex = (MrbcMutex*)mrbc_raw_alloc( sizeof(MrbcMutex) );
+    if( mutex == NULL ) return NULL;	// ENOMEM
+  }
+
+  static const MrbcMutex init_val = MRBC_MUTEX_INITIALIZER;
+  *mutex = init_val;
+
+  return mutex;
+}
+
+
+//================================================================
+/*! mutex lock
+
+*/
+int mrbc_mutex_lock( MrbcMutex *mutex, MrbcTcb *tcb )
+{
+  hal_disable_irq();
+  fprintf(stderr, "mutex lock / MUTEX: %p TCB: %p",  mutex, tcb );
+
+  // Try lock mutex;
+  if( mutex->lock == 0 ) {      // a future does use TAS?
+    mutex->lock = 1;
+    mutex->tcb = tcb;
+    fprintf(stderr, "  lock OK\n" );
+    goto DONE;
+  }
+  fprintf(stderr, "  lock FAIL\n" );
+
+  // Can't lock mutex; to WAITING state.
+  q_delete_task(tcb);
+  tcb->state  = TASKSTATE_WAITING;
+  tcb->reason = TASKREASON_MUTEX;
+  tcb->mutex = mutex;
+  q_insert_task(tcb);
+  tcb->vm->flag_preemption = 1;
+
+ DONE:
+  hal_enable_irq();
+
+  return 0;
+}
+
+
+//================================================================
+/*! mutex unlock
+
+*/
+int mrbc_mutex_unlock( MrbcMutex *mutex, MrbcTcb *tcb )
+{
+  fprintf(stderr, "mutex unlock / MUTEX: %p TCB: %p\n",  mutex, tcb );
+
+  // check some parameters.
+  assert( mutex->tcb == tcb );
+  assert( mutex->lock == 1 );
+
+  // wakeup ONE waiting task.
+  int flag_preemption = 0;
+  hal_disable_irq();
+  tcb = q_waiting_;
+  while( tcb != NULL ) {
+    if( tcb->reason == TASKREASON_MUTEX && tcb->mutex == mutex ) {
+      fprintf(stderr, "SW: TCB: %p\n", tcb );
+      mutex->tcb = tcb;
+      q_delete_task(tcb);
+      tcb->state = TASKSTATE_READY;
+      q_insert_task(tcb);
+      flag_preemption = 1;
+      break;
+    }
+    tcb = tcb->next;
+  }
+
+  if( flag_preemption ) {
+    tcb = q_ready_;
+    while( tcb != NULL ) {
+      if( tcb->state == TASKSTATE_RUNNING ) tcb->vm->flag_preemption = 1;
+      tcb = tcb->next;
+    }
+  }
+  else {
+    // unlock mutex
+    fprintf(stderr, "mutex unlock all.\n" );
+    mutex->lock = 0;
+  }
+
+  hal_enable_irq();
+
+  return 0;
+}
+
+
+//================================================================
+/*! mutex trylock
+
+*/
+int mrbc_mutex_trylock( MrbcMutex *mutex, MrbcTcb *tcb )
+{
+  int ret;
+
+  hal_disable_irq();
+  fprintf(stderr, "mutex try lock / MUTEX: %p TCB: %p",  mutex, tcb );
+
+  if( mutex->lock == 0 ) {
+    mutex->lock = 1;
+    mutex->tcb = tcb;
+    ret = 0;
+    fprintf(stderr, "  lock OK\n" );
+  }
+  else {
+    fprintf(stderr, "  lock FAIL\n" );
+    ret = 1;      // TODO
+  }
+
+  hal_enable_irq();
+  return ret;
+}
+
+
+
+
 #ifdef MRBC_DEBUG
 
 //================================================================
@@ -542,21 +677,41 @@ void pq(MrbcTcb *p_tcb)
 
   p = p_tcb;
   while( p != NULL ) {
-    console_printf("%08x ", (int)((uint64_t)p & 0xffffffff));
+    console_printf("%08x ", (int)((uint32_t)p & 0xffffffff));
     p = p->next;
   }
   console_printf("\n");
 
   p = p_tcb;
   while( p != NULL ) {
-    console_printf(" pri: %2d ", p->priority_preemption);
+    console_printf(" pri:%3d ", p->priority_preemption);
     p = p->next;
   }
   console_printf("\n");
 
   p = p_tcb;
   while( p != NULL ) {
-    console_printf(" nx:%04x ", (int)((uint64_t)p->next & 0xffff));
+    switch( p->state ) {
+    case TASKSTATE_DOMANT:    console_printf(" DOMANT  "); break;
+    case TASKSTATE_READY:     console_printf(" READY   "); break;
+    case TASKSTATE_RUNNING:   console_printf(" RUN     "); break;
+    case TASKSTATE_WAITING:
+      switch( p->reason ) {
+      case TASKREASON_SLEEP:  console_printf(" SLEEP   "); break;
+      case TASKREASON_MUTEX:  console_printf(" MUTEX   "); break;
+      default:                console_printf(" REASN %02X", p->reason); break;
+      }
+      break;
+    case TASKSTATE_SUSPENDED: console_printf(" SUSPEND "); break;
+    default:                  console_printf(" STATE %02X", p->state); break;
+    }
+    p = p->next;
+  }
+  console_printf("\n");
+
+  p = p_tcb;
+  while( p != NULL ) {
+    console_printf(" tmsl:%2d ", p->timeslice);
     p = p->next;
   }
   console_printf("\n");
@@ -565,13 +720,37 @@ void pq(MrbcTcb *p_tcb)
 
 void pqall(void)
 {
-  //  console_printf("<<<<< DOMANT >>>>>\n");
-  //  pq(q_domant_);
-  console_printf("<<<<< READY >>>>>\n");
-  pq(q_ready_);
-  console_printf("<<<<< WAITING >>>>>\n");
-  pq(q_waiting_);
-  console_printf("<<<<< SUSPENDED >>>>>\n");
-  pq(q_suspended_);
+  //  console_printf("<<<<< DOMANT >>>>>\n"); pq(q_domant_);
+  console_printf("<<<<< READY >>>>>\n");  pq(q_ready_);
+  console_printf("<<<<< WAITING >>>>>\n"); pq(q_waiting_);
+  //console_printf("<<<<< SUSPENDED >>>>>\n"); pq(q_suspended_);
 }
 #endif
+
+
+
+//================================================================
+/*! mutex test
+*/
+static MrbcMutex mutex1 = MRBC_MUTEX_INITIALIZER;
+
+void c_mutex_lock( mrb_vm *vm, mrb_value *v )
+{
+  MrbcTcb *tcb = find_requested_task(vm);
+  assert( tcb != NULL );
+
+  mrbc_mutex_lock( &mutex1, tcb );
+}
+
+void c_mutex_unlock( mrb_vm *vm, mrb_value *v )
+{
+  MrbcTcb *tcb = find_requested_task(vm);
+  assert( tcb != NULL );
+
+  mrbc_mutex_unlock( &mutex1, tcb );
+}
+
+void c_waste( mrb_vm *vm, mrb_value *v )
+{
+  usleep(100);
+}
