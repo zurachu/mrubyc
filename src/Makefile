@@ -57,4 +57,4 @@ c_symbol.o: c_symbol.c vm.h value.h vm_config.h alloc.h class.h \
 
 
 clean:
-	@rm -Rf $(TARGET) $(OBJS) *~
+	@del /F $(TARGET) $(OBJS) *~
