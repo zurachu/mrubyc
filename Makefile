@@ -11,14 +11,14 @@ all: mrubyc_lib mrubyc_bin
 
 
 mrubyc_lib:
-	cd src ; make all
+	make all -C src
 
 mrubyc_bin:
-	cd sample_c ; make all
+	make all -C sample_c
 
 clean:
-	cd src ; make clean
-	cd sample_c ; make clean
+	make clean -C src
+	make clean -C sample_c
 
 package: clean
 	@LANG=C ;\
