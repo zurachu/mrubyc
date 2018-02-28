@@ -14,6 +14,7 @@
 #include "vm_config.h"
 #include <stdint.h>
 #include <stdarg.h>
+#include <smcvals.h>
 #include <string.h>
 #if MRBC_USE_FLOAT
 #include <stdio.h>
