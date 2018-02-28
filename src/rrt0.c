@@ -229,7 +229,7 @@ static void c_suspend_task(mrb_vm *vm, mrb_value *v, int argc)
   }
 
   if( v[1].tt != MRB_TT_HANDLE ) return;	// error.
-  mrbc_suspend_task( (MrbcTcb *)(v[1].handle) );
+  mrbc_suspend_task( (MrbcTcb *)(v[1].u.handle) );
 }
 
 
@@ -240,7 +240,7 @@ static void c_suspend_task(mrb_vm *vm, mrb_value *v, int argc)
 static void c_resume_task(mrb_vm *vm, mrb_value *v, int argc)
 {
   if( v[1].tt != MRB_TT_HANDLE ) return;	// error.
-  mrbc_resume_task( (MrbcTcb *)(v[1].handle) );
+  mrbc_resume_task( (MrbcTcb *)(v[1].u.handle) );
 }
 
 
@@ -253,7 +253,7 @@ static void c_get_tcb(mrb_vm *vm, mrb_value *v, int argc)
   MrbcTcb *tcb = VM2TCB(vm);
 
   mrb_value value = {.tt = MRB_TT_HANDLE};
-  value.handle = (void*)tcb;
+  value.u.handle = (void*)tcb;
 
   SET_RETURN( value );
 }
@@ -265,10 +265,10 @@ static void c_get_tcb(mrb_vm *vm, mrb_value *v, int argc)
 */
 static void c_mutex_new(mrb_vm *vm, mrb_value *v, int argc)
 {
-  *v = mrbc_instance_new(vm, v->cls, sizeof(MrbcMutex));
-  if( !v->instance ) return;
+  *v = mrbc_instance_new(vm, v->u.cls, sizeof(MrbcMutex));
+  if( !v->u.instance ) return;
 
-  mrbc_mutex_init( (MrbcMutex *)(v->instance->data) );
+  mrbc_mutex_init( (MrbcMutex *)(v->u.instance->data) );
 }
 
 
@@ -278,7 +278,7 @@ static void c_mutex_new(mrb_vm *vm, mrb_value *v, int argc)
 */
 static void c_mutex_lock(mrb_vm *vm, mrb_value *v, int argc)
 {
-  int r = mrbc_mutex_lock( (MrbcMutex *)v->instance->data, VM2TCB(vm) );
+  int r = mrbc_mutex_lock( (MrbcMutex *)v->u.instance->data, VM2TCB(vm) );
   if( r == 0 ) return;  // return self
 
   // raise ThreadError
@@ -292,7 +292,7 @@ static void c_mutex_lock(mrb_vm *vm, mrb_value *v, int argc)
 */
 static void c_mutex_unlock(mrb_vm *vm, mrb_value *v, int argc)
 {
-  int r = mrbc_mutex_unlock( (MrbcMutex *)v->instance->data, VM2TCB(vm) );
+  int r = mrbc_mutex_unlock( (MrbcMutex *)v->u.instance->data, VM2TCB(vm) );
   if( r == 0 ) return;  // return self
 
   // raise ThreadError
@@ -306,7 +306,7 @@ static void c_mutex_unlock(mrb_vm *vm, mrb_value *v, int argc)
 */
 static void c_mutex_trylock(mrb_vm *vm, mrb_value *v, int argc)
 {
-  int r = mrbc_mutex_trylock( (MrbcMutex *)v->instance->data, VM2TCB(vm) );
+  int r = mrbc_mutex_trylock( (MrbcMutex *)v->u.instance->data, VM2TCB(vm) );
   if( r == 0 ) {
     SET_TRUE_RETURN();
   } else {
@@ -344,7 +344,7 @@ void mrbc_tick(void)
     MrbcTcb *t = tcb;
     tcb = tcb->next;
 
-    if( t->reason == TASKREASON_SLEEP && t->wakeup_tick == tick_ ) {
+    if( t->reason == TASKREASON_SLEEP && t->u.wakeup_tick == tick_ ) {
       q_delete_task(t);
       t->state     = TASKSTATE_READY;
       t->timeslice = TIMESLICE_TICK;
@@ -565,7 +565,7 @@ void mrbc_sleep_ms(MrbcTcb *tcb, uint32_t ms)
   tcb->timeslice   = 0;
   tcb->state       = TASKSTATE_WAITING;
   tcb->reason      = TASKREASON_SLEEP;
-  tcb->wakeup_tick = tick_ + ms;
+  tcb->u.wakeup_tick = tick_ + ms;
   q_insert_task(tcb);
   hal_enable_irq();
 
@@ -686,7 +686,7 @@ int mrbc_mutex_lock( MrbcMutex *mutex, MrbcTcb *tcb )
   q_delete_task(tcb);
   tcb->state  = TASKSTATE_WAITING;
   tcb->reason = TASKREASON_MUTEX;
-  tcb->mutex = mutex;
+  tcb->u.mutex = mutex;
   q_insert_task(tcb);
   tcb->vm.flag_preemption = 1;
 
@@ -716,7 +716,7 @@ int mrbc_mutex_unlock( MrbcMutex *mutex, MrbcTcb *tcb )
   hal_disable_irq();
   tcb = q_waiting_;
   while( tcb != NULL ) {
-    if( tcb->reason == TASKREASON_MUTEX && tcb->mutex == mutex ) {
+    if( tcb->reason == TASKREASON_MUTEX && tcb->u.mutex == mutex ) {
       MRBC_MUTEX_TRACE("SW: TCB: %p\n", tcb );
       mutex->tcb = tcb;
       q_delete_task(tcb);

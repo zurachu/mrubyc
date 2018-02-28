@@ -50,8 +50,8 @@ mrb_class *find_class_by_object(struct VM *vm, mrb_object *obj)
   case MRB_TT_FLOAT:	cls = mrbc_class_float; 	break;
   case MRB_TT_SYMBOL:	cls = mrbc_class_symbol;	break;
 
-  case MRB_TT_OBJECT:	cls = obj->instance->cls;       break;
-  case MRB_TT_CLASS:    cls = obj->cls;                 break;
+  case MRB_TT_OBJECT:	cls = obj->u.instance->cls;       break;
+  case MRB_TT_CLASS:    cls = obj->u.cls;                 break;
   case MRB_TT_PROC:	cls = mrbc_class_proc;		break;
   case MRB_TT_ARRAY:	cls = mrbc_class_array; 	break;
   case MRB_TT_STRING:	cls = mrbc_class_string;	break;
@@ -111,7 +111,7 @@ void mrbc_define_method(mrb_vm *vm, mrb_class *cls, const char *name, mrb_func_t
   rproc->c_func = 1;  // c-func
   rproc->next = cls->procs;
   cls->procs = rproc;
-  rproc->func = cfunc;
+  rproc->u.func = cfunc;
 }
 
 
@@ -132,7 +132,7 @@ void mrbc_funcall(mrb_vm *vm, const char *name, mrb_value *v, int argc)
   mrb_sym sym_id = str_to_symid(name);
   mrb_proc *m = find_method(vm, v[0], sym_id);
   mrb_callinfo *callinfo;
-  
+
   if( m==0 ) return;   // no initialize method
   // call initialize method 
   
@@ -146,7 +146,7 @@ void mrbc_funcall(mrb_vm *vm, const char *name, mrb_value *v, int argc)
 
   // target irep
   vm->pc = 0;
-  vm->pc_irep = m->irep;
+  vm->pc_irep = m->u.irep;
 
   // new regs
   vm->reg_top += 2;   // recv and symbol(:new)
@@ -163,7 +163,7 @@ void c_puts(mrb_value *v)
 {
   switch( v->tt ){
   case MRB_TT_FIXNUM:
-    console_printf("%d", v->i);
+    console_printf("%d", v->u.i);
     break;
 
   case MRB_TT_NIL:
@@ -180,7 +180,7 @@ void c_puts(mrb_value *v)
 
 #if MRBC_USE_FLOAT
   case MRB_TT_FLOAT:
-    console_printf("%f", v->d);
+    console_printf("%f", v->u.d);
     break;
 #endif
 
@@ -189,7 +189,7 @@ void c_puts(mrb_value *v)
     break;
 
   case MRB_TT_RANGE:
-    v = v->range;
+    v = v->u.range;
     c_puts(v+1);
     console_printf("..");
     if( v[0].tt == MRB_TT_TRUE ) console_putchar('.');
@@ -197,8 +197,8 @@ void c_puts(mrb_value *v)
     break;
 
   case MRB_TT_ARRAY:{
-    mrb_value *array = v->array->array;
-    int i, n = array[0].i;
+    mrb_value *array = v->u.array->u.array;
+    int i, n = array[0].u.i;
     console_putchar('[');
     for( i = 0 ; i < n ; i++ ) {
       if( i != 0 ) console_print(", ");
@@ -208,7 +208,7 @@ void c_puts(mrb_value *v)
   } break;
 
   case MRB_TT_CLASS:
-    console_print( symid_to_str( v->cls->name ) );
+    console_print( symid_to_str( v->u.cls->name ) );
     break;
 
   default:
@@ -260,7 +260,7 @@ static void c_object_class(mrb_vm *vm, mrb_value *v, int argc)
 // Object.new
 static void c_object_new(mrb_vm *vm, mrb_value *v, int argc)
 {
-  *v = mrbc_instance_new(vm, v->cls, 0);
+  *v = mrbc_instance_new(vm, v->u.cls, 0);
   // call "initialize"
   mrbc_funcall(vm, "initialize", v, argc);
 }
@@ -336,7 +336,7 @@ static void c_proc_call(mrb_vm *vm, mrb_value *v, int argc)
 
   // target irep
   vm->pc = 0;
-  vm->pc_irep = v->proc->irep;
+  vm->pc_irep = v->u.proc->u.irep;
 }
 
 

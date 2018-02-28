@@ -65,7 +65,7 @@ mrb_value mrbc_string_new(mrb_vm *vm, const void *src, int len)
     str[len] = '\0';
   }
 
-  value.h_str = h;
+  value.u.h_str = h;
   return value;
 }
 
@@ -107,7 +107,7 @@ mrb_value mrbc_string_new_alloc(mrb_vm *vm, void *buf, int len)
   h->size = len;
   h->str = buf;
 
-  value.h_str = h;
+  value.u.h_str = h;
   return value;
 }
 
@@ -121,8 +121,8 @@ mrb_value mrbc_string_new_alloc(mrb_vm *vm, void *buf, int len)
 */
 void mrbc_string_delete(mrb_vm *vm, mrb_value *v)
 {
-  mrbc_raw_free(v->h_str->str);
-  mrbc_raw_free(v->h_str);
+  mrbc_raw_free(v->u.h_str->str);
+  mrbc_raw_free(v->u.h_str);
 }
 
 
@@ -132,8 +132,8 @@ void mrbc_string_delete(mrb_vm *vm, mrb_value *v)
 */
 void mrbc_string_clear_vm_id(mrb_value *v)
 {
-  mrbc_set_vm_id( v->h_str, 0 );
-  mrbc_set_vm_id( v->h_str->str, 0 );
+  mrbc_set_vm_id( v->u.h_str, 0 );
+  mrbc_set_vm_id( v->u.h_str->str, 0 );
 }
 
 
@@ -151,14 +151,14 @@ static void c_string_add(mrb_vm *vm, mrb_value *v, int argc)
     return;
   }
 
-  h1 = GET_ARG(0).h_str;
-  h2 = GET_ARG(1).h_str;
+  h1 = GET_ARG(0).u.h_str;
+  h2 = GET_ARG(1).u.h_str;
 
   value = mrbc_string_new(vm, NULL, h1->size + h2->size);
-  if( value.h_str == NULL ) return;		// ENOMEM
+  if( value.u.h_str == NULL ) return;		// ENOMEM
 
-  memcpy( value.h_str->str,            h1->str, h1->size );
-  memcpy( value.h_str->str + h1->size, h2->str, h2->size + 1 );
+  memcpy( value.u.h_str->str,            h1->str, h1->size );
+  memcpy( value.u.h_str->str + h1->size, h2->str, h2->size + 1 );
 
   mrbc_release(vm, v);
   SET_RETURN(value);
@@ -176,8 +176,8 @@ static void c_string_eql(mrb_vm *vm, mrb_value *v, int argc)
   int result = 0;
   if( GET_TT_ARG(1) != MRB_TT_STRING ) goto DONE;
 
-  h1 = GET_ARG(0).h_str;
-  h2 = GET_ARG(1).h_str;
+  h1 = GET_ARG(0).u.h_str;
+  h2 = GET_ARG(1).u.h_str;
 
   if( h1->size != h2->size ) goto DONE;	// false
   result = !memcmp(h1->str, h2->str, h1->size);
@@ -198,7 +198,7 @@ static void c_string_eql(mrb_vm *vm, mrb_value *v, int argc)
 */
 static void c_string_size(mrb_vm *vm, mrb_value *v, int argc)
 {
-  int32_t size = v->h_str->size;
+  int32_t size = v->u.h_str->size;
 
   mrbc_release(vm, v);
   SET_INT_RETURN( size );
@@ -257,8 +257,8 @@ static void c_string_to_s(mrb_vm *vm, mrb_value *v, int argc)
 static void c_string_append(mrb_vm *vm, mrb_value *v, int argc)
 {
   mrb_value *v2 = &GET_ARG(1);
-  int len1 = v->h_str->size;
-  int len2 = (v2->tt == MRB_TT_STRING) ? v2->h_str->size : 1;
+  int len1 = v->u.h_str->size;
+  int len2 = (v2->tt == MRB_TT_STRING) ? v2->u.h_str->size : 1;
 
   uint8_t *str = mrbc_realloc(vm, MRBC_STRING_CSTR(v), len1+len2+1);
   if( !str ) return;
@@ -266,12 +266,12 @@ static void c_string_append(mrb_vm *vm, mrb_value *v, int argc)
   if( v2->tt == MRB_TT_STRING ) {
     memcpy(str + len1, MRBC_STRING_CSTR(v2), len2 + 1);
   } else if( v2->tt == MRB_TT_FIXNUM ) {
-    str[len1] = v2->i;
+    str[len1] = v2->u.i;
     str[len1+1] = '\0';
   }
 
-  v->h_str->size = len1 + len2;
-  v->h_str->str = str;
+  v->u.h_str->size = len1 + len2;
+  v->u.h_str->str = str;
 }
 
 
@@ -290,26 +290,26 @@ static void c_string_slice(mrb_vm *vm, mrb_value *v, int argc)
   if( argc == 1 && v1->tt == MRB_TT_FIXNUM ) {
     mrb_value value;
 
-    int len = v->h_str->size;
-    int idx = v1->i;
+    int len = v->u.h_str->size;
+    int idx = v1->u.i;
     int ch = -1;
     if( idx >= 0 ) {
       if( idx < len ) {
-        ch = *(v->h_str->str + idx);
+        ch = *(v->u.h_str->str + idx);
       }
     } else {
       idx += len;
       if( idx >= 0 ) {
-        ch = *(v->h_str->str + idx);
+        ch = *(v->u.h_str->str + idx);
       }
     }
     if( ch < 0 ) goto RETURN_NIL;
 
     value = mrbc_string_new(vm, NULL, 1);
-    if( !value.h_str ) goto RETURN_NIL;		// ENOMEM
+    if( !value.u.h_str ) goto RETURN_NIL;		// ENOMEM
 
-    value.h_str->str[0] = ch;
-    value.h_str->str[1] = '\0';
+    value.u.h_str->str[0] = ch;
+    value.u.h_str->str[1] = '\0';
     mrbc_release(vm, v);
     SET_RETURN(value);
     return;		// normal return
@@ -322,17 +322,17 @@ static void c_string_slice(mrb_vm *vm, mrb_value *v, int argc)
     mrb_value value;
     int rlen;
 
-    int len = v->h_str->size;
-    int idx = v1->i;
+    int len = v->u.h_str->size;
+    int idx = v1->u.i;
     if( idx < 0 ) idx += len;
     if( idx < 0 ) goto RETURN_NIL;
 
-    rlen = (v2->i < (len - idx)) ? v2->i : (len - idx);
+    rlen = (v2->u.i < (len - idx)) ? v2->u.i : (len - idx);
 						// min( v2->i, (len-idx) )
     if( rlen < 0 ) goto RETURN_NIL;
 
-    value = mrbc_string_new(vm, v->h_str->str + idx, rlen);
-    if( !value.h_str ) goto RETURN_NIL;		// ENOMEM
+    value = mrbc_string_new(vm, v->u.h_str->str + idx, rlen);
+    if( !value.u.h_str ) goto RETURN_NIL;		// ENOMEM
 
     mrbc_release(vm, v);
     SET_RETURN(value);
@@ -392,8 +392,8 @@ static void c_string_insert(mrb_vm *vm, mrb_value *v, int argc)
     return;
   }
 
-  len1 = v->h_str->size;
-  len2 = val->h_str->size;
+  len1 = v->u.h_str->size;
+  len2 = val->u.h_str->size;
   if( nth < 0 ) nth = len1 + nth;               // adjust to positive number.
   if( len > len1 - nth ) len = len1 - nth;
   if( nth < 0 || nth > len1 || len < 0) {
@@ -406,9 +406,9 @@ static void c_string_insert(mrb_vm *vm, mrb_value *v, int argc)
 
   memmove( str + nth + len2, str + nth + len, len1 - nth - len + 1 );
   memcpy( str + nth, MRBC_STRING_CSTR(val), len2 );
-  v->h_str->size = len1 + len2 - len;
+  v->u.h_str->size = len1 + len2 - len;
 
-  v->h_str->str = str;
+  v->u.h_str->str = str;
 }
 
 
@@ -461,7 +461,7 @@ static void c_sprintf(mrb_vm *vm, mrb_value *v, int argc)
     switch(pf.fmt.type) {
     case 'c':
       if( GET_ARG(i).tt == MRB_TT_FIXNUM ) {
-	ret = mrbc_printf_char( &pf, GET_ARG(i).i );
+	ret = mrbc_printf_char( &pf, GET_ARG(i).u.i );
       }
       break;
 
@@ -475,10 +475,10 @@ static void c_sprintf(mrb_vm *vm, mrb_value *v, int argc)
     case 'i':
     case 'u':
       if( GET_ARG(i).tt == MRB_TT_FIXNUM ) {
-	ret = mrbc_printf_int( &pf, GET_ARG(i).i, 10);
+	ret = mrbc_printf_int( &pf, GET_ARG(i).u.i, 10);
       } else
 	if( GET_ARG(i).tt == MRB_TT_FLOAT ) {
-	  ret = mrbc_printf_int( &pf, (int32_t)GET_ARG(i).d, 10);
+	  ret = mrbc_printf_int( &pf, (int32_t)GET_ARG(i).u.d, 10);
 	} else
 	  if( GET_ARG(i).tt == MRB_TT_STRING ) {
 	    int32_t ival = atol(MRBC_STRING_CSTR(&GET_ARG(i)));
@@ -489,14 +489,14 @@ static void c_sprintf(mrb_vm *vm, mrb_value *v, int argc)
     case 'b':
     case 'B':
       if( GET_ARG(i).tt == MRB_TT_FIXNUM ) {
-	ret = mrbc_printf_int( &pf, GET_ARG(i).i, 2);
+	ret = mrbc_printf_int( &pf, GET_ARG(i).u.i, 2);
       }
       break;
 
     case 'x':
     case 'X':
       if( GET_ARG(i).tt == MRB_TT_FIXNUM ) {
-	ret = mrbc_printf_int( &pf, GET_ARG(i).i, 16);
+	ret = mrbc_printf_int( &pf, GET_ARG(i).u.i, 16);
       }
       break;
 
@@ -507,10 +507,10 @@ static void c_sprintf(mrb_vm *vm, mrb_value *v, int argc)
     case 'g':
     case 'G':
       if( GET_ARG(i).tt == MRB_TT_FLOAT ) {
-	ret = mrbc_printf_float( &pf, GET_ARG(i).d );
+	ret = mrbc_printf_float( &pf, GET_ARG(i).u.d );
       } else
 	if( GET_ARG(i).tt == MRB_TT_FIXNUM ) {
-	  ret = mrbc_printf_float( &pf, (double)GET_ARG(i).i );
+	  ret = mrbc_printf_float( &pf, (double)GET_ARG(i).u.i );
 	}
       break;
 #endif

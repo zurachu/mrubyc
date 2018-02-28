@@ -111,7 +111,7 @@ typedef struct RObject {
     char *str;             // MRB_TT_STRING : C-string (only loader use.)
 
     struct MrbcHandleString *h_str;
-  };
+  } u;
 } mrb_object;
 typedef struct RObject mrb_value;
 
@@ -132,7 +132,7 @@ typedef struct RProc {
   union {
     struct IREP *irep;
     mrb_func_t func;
-  };
+  } u;
 } mrb_proc;
 
 
@@ -162,19 +162,19 @@ void mrbc_instance_delete(struct VM *vm, mrb_value *v);
 
 
 // for C call
-#define SET_INT_RETURN(n)	(v[0].tt=MRB_TT_FIXNUM, v[0].i=(n))
+#define SET_INT_RETURN(n)	(v[0].tt=MRB_TT_FIXNUM, v[0].u.i=(n))
 #define SET_NIL_RETURN()	(v[0].tt=MRB_TT_NIL)
-#define SET_FLOAT_RETURN(n)	(v[0].tt=MRB_TT_FLOAT, v[0].d=(n))
+#define SET_FLOAT_RETURN(n)	(v[0].tt=MRB_TT_FLOAT, v[0].u.d=(n))
 #define SET_FALSE_RETURN()	(v[0].tt=MRB_TT_FALSE)
 #define SET_TRUE_RETURN()	(v[0].tt=MRB_TT_TRUE)
 #define SET_RETURN(n)		(v[0]=(n))
 
 #define GET_TT_ARG(n)		(v[(n)].tt)
-#define GET_INT_ARG(n)		(v[(n)].i)
+#define GET_INT_ARG(n)		(v[(n)].u.i)
 #define GET_ARY_ARG(n)		(v[(n)])
 #define GET_ARG(n)		(v[(n)])
-#define GET_FLOAT_ARG(n)	(v[(n)].d)
-#define GET_STRING_ARG(n)	(v[(n)].h_str->str)
+#define GET_FLOAT_ARG(n)	(v[(n)].u.d)
+#define GET_STRING_ARG(n)	(v[(n)].u.h_str->str)
 
 
 
@@ -188,7 +188,7 @@ void mrbc_instance_delete(struct VM *vm, mrb_value *v);
 static inline mrb_value mrb_fixnum_value( int32_t n )
 {
   mrb_value value = {.tt = MRB_TT_FIXNUM};
-  value.i = n;
+  value.u.i = n;
   return value;
 }
 
@@ -203,7 +203,7 @@ static inline mrb_value mrb_fixnum_value( int32_t n )
 static inline mrb_value mrb_float_value( double n )
 {
   mrb_value value = {.tt = MRB_TT_FLOAT};
-  value.d = n;
+  value.u.d = n;
   return value;
 }
 

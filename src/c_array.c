@@ -11,8 +11,8 @@
 // get size of array
 static int array_size(mrb_value *v)
 {
-  mrb_value *array = v->array;
-  return array->array->i;
+  mrb_value *array = v->u.array;
+  return array->u.array->u.i;
 }
 
 
@@ -47,9 +47,9 @@ static void c_array_size(mrb_vm *vm, mrb_value *v, int argc)
 static void c_array_get(mrb_vm *vm, mrb_value *v, int argc)
 {
   int pos = GET_INT_ARG(1);
-  mrb_value *array = v->handle->array;
+  mrb_value *array = v->u.handle->u.array;
 
-  if( pos >= 0 && pos < array->i ){
+  if( pos >= 0 && pos < array->u.i ){
     *v = array[pos+1];
   } else {
     SET_NIL_RETURN();
@@ -60,9 +60,9 @@ static void c_array_get(mrb_vm *vm, mrb_value *v, int argc)
 static void c_array_set(mrb_vm *vm, mrb_value *v, int argc)
 {
   int pos = GET_INT_ARG(1);
-  mrb_value *array = v->handle->array;
+  mrb_value *array = v->u.handle->u.array;
 
-  if( pos >= 0 && pos < array->i ){
+  if( pos >= 0 && pos < array->u.i ){
     array[pos+1] = GET_ARG(2);
   } else {
     SET_NIL_RETURN();
@@ -72,6 +72,10 @@ static void c_array_set(mrb_vm *vm, mrb_value *v, int argc)
 // Array = operator +
 static void c_array_plus(mrb_vm *vm, mrb_value *v, int argc)
 {
+  mrb_value *array1 = v[0].u.handle->u.array;
+  mrb_value *array2 = v[1].u.handle->u.array;
+  int len1 = array1->u.i;
+  int len2 = array2->u.i;
   mrb_value *new_array, *new_handle, *p;
   int i;
 
@@ -84,7 +88,7 @@ static void c_array_plus(mrb_vm *vm, mrb_value *v, int argc)
 
   // copy array
   new_array[0].tt = MRB_TT_FIXNUM;
-  new_array[0].i = len1 + len2;
+  new_array[0].u.i = len1 + len2;
 
   p = new_array + 1;
   for( i=0 ; i<len1 ; i++ ){
@@ -95,15 +99,15 @@ static void c_array_plus(mrb_vm *vm, mrb_value *v, int argc)
   }
 
   new_handle->tt = MRB_TT_HANDLE;
-  new_handle->array = new_array;
-  v->handle = new_handle;
+  new_handle->u.array = new_array;
+  v->u.handle = new_handle;
 }
 
 
 static void c_array_index(mrb_vm *vm, mrb_value *v, int argc)
 {
-  int len = v->handle->array->i;
-  mrb_value *array = v->handle->array + 1;
+  int len = v->u.handle->u.array->u.i;
+  mrb_value *array = v->u.handle->u.array + 1;
   mrb_value value = GET_ARG(1);
 
   int i;
@@ -121,7 +125,7 @@ static void c_array_index(mrb_vm *vm, mrb_value *v, int argc)
 static void c_array_first(mrb_vm *vm, mrb_value *v, int argc)
 {
   if( GET_TT_ARG(1) == MRB_TT_FIXNUM ){
-    mrb_value *array = v->handle->array;
+    mrb_value *array = v->u.handle->u.array;
     SET_RETURN( array[1] );
   } else {
     SET_NIL_RETURN();
@@ -131,8 +135,8 @@ static void c_array_first(mrb_vm *vm, mrb_value *v, int argc)
 static void c_array_last(mrb_vm *vm, mrb_value *v, int argc)
 {
   if( GET_TT_ARG(1) == MRB_TT_FIXNUM ){
-    int len = v->handle->array->i;
-    mrb_value *array = v->handle->array + 1;
+    int len = v->u.handle->u.array->u.i;
+    mrb_value *array = v->u.handle->u.array + 1;
     SET_RETURN( array[len-1] );
   } else {
     SET_NIL_RETURN();
@@ -141,24 +145,24 @@ static void c_array_last(mrb_vm *vm, mrb_value *v, int argc)
 
 static void c_array_push(mrb_vm *vm, mrb_value *v, int argc)
 {
-  mrb_value *array = v[0].handle->array;
-  int len = array[0].i;
+  mrb_value *array = v[0].u.handle->u.array;
+  int len = array[0].u.i;
 
   mrb_value *new_array = (mrb_value *)mrbc_realloc(vm, array, sizeof(mrb_value)*(len+2));
-  new_array[0].i++;
+  new_array[0].u.i++;
   new_array[len+1] = v[1];
-  v[0].handle->array = new_array;
+  v[0].u.handle->u.array = new_array;
 }
 
 static void c_array_pop(mrb_vm *vm, mrb_value *v, int argc)
 {
   mrb_value *new_array;
-  mrb_value *array = v[0].handle->array;
-  int len = array[0].i;
+  mrb_value *array = v[0].u.handle->u.array;
+  int len = array[0].u.i;
 
   v[0] = array[len];
   new_array = (mrb_value *)mrbc_realloc(vm, array, sizeof(mrb_value)*(len));
-  new_array[0].i--;
+  new_array[0].u.i--;
 
 
 }

@@ -35,12 +35,12 @@ mrb_value mrbc_range_new(mrb_vm *vm, mrb_value *v_st, mrb_value *v_ed, int exclu
   mrb_value value;
 
   value.tt = MRB_TT_RANGE;
-  value.range = (mrb_value*)mrbc_alloc(vm, sizeof(mrb_value) * 3);
-  if( !value.range ) return value;	// ENOMEM
+  value.u.range = (mrb_value*)mrbc_alloc(vm, sizeof(mrb_value) * 3);
+  if( !value.u.range ) return value;	// ENOMEM
 
-  value.range[0].tt = exclude ? MRB_TT_TRUE : MRB_TT_FALSE;
-  value.range[1] = *v_st;
-  value.range[2] = *v_ed;
+  value.u.range[0].tt = exclude ? MRB_TT_TRUE : MRB_TT_FALSE;
+  value.u.range[1] = *v_st;
+  value.u.range[2] = *v_ed;
 
   return value;
 }
@@ -53,7 +53,7 @@ mrb_value mrbc_range_new(mrb_vm *vm, mrb_value *v_st, mrb_value *v_ed, int exclu
 */
 void mrbc_range_delete(mrb_vm *vm, mrb_value *v)
 {
-  mrb_value *obj = v->range;
+  mrb_value *obj = v->u.range;
 
   mrbc_release( vm, &obj[1] );
   mrbc_release( vm, &obj[2] );
@@ -66,7 +66,7 @@ void mrbc_range_delete(mrb_vm *vm, mrb_value *v)
 */
 void mrbc_range_clear_vm_id(mrb_value *v)
 {
-  mrbc_set_vm_id( v->range, 0 );
+  mrbc_set_vm_id( v->u.range, 0 );
 }
 
 
@@ -77,17 +77,17 @@ static void c_range_equal3(mrb_vm *vm, mrb_value *v, int argc)
 {
 
   int result = 0;
-  mrb_value *flag = &v->range[0];
-  mrb_value *v_st = &v->range[1];
-  mrb_value *v_ed = &v->range[2];
+  mrb_value *flag = &v->u.range[0];
+  mrb_value *v_st = &v->u.range[1];
+  mrb_value *v_ed = &v->u.range[2];
   mrb_value *v1 = v+1;
 
   if( v_st->tt == MRB_TT_FIXNUM && v1->tt == MRB_TT_FIXNUM ) {
 
     if( flag->tt == MRB_TT_TRUE ) {
-      result = (v_st->i <= v1->i) && (v1->i < v_ed->i);
+      result = (v_st->u.i <= v1->u.i) && (v1->u.i < v_ed->u.i);
     } else {
-      result = (v_st->i <= v1->i) && (v1->i <= v_ed->i);
+      result = (v_st->u.i <= v1->u.i) && (v1->u.i <= v_ed->u.i);
     }
     goto DONE;
   }

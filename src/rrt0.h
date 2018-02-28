@@ -65,7 +65,7 @@ typedef struct MrbcTcb {
   union {
     uint32_t wakeup_tick;
     struct MrbcMutex *mutex;
-  };
+  } u;
   struct VM vm;
 } MrbcTcb;
 

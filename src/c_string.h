@@ -35,7 +35,7 @@ typedef struct MrbcHandleString {
 } MrbcHandleString;
 
 
-#define MRBC_STRING_CSTR(p) ((char*)(p)->h_str->str)
+#define MRBC_STRING_CSTR(p) ((char*)(p)->u.h_str->str)
 
 
 mrb_value mrbc_string_new(mrb_vm *vm, const void *src, int len);

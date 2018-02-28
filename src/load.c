@@ -156,7 +156,7 @@ static mrb_irep * load_irep_1(struct VM *vm, const uint8_t **pos)
 #if MRBC_USE_STRING
     case 0: { // IREP_TT_STRING
       obj->tt = MRB_TT_STRING;
-      obj->str = (char*)p;
+      obj->u.str = (char*)p;
     } break;
 #endif
     case 1: { // IREP_TT_FIXNUM
@@ -164,7 +164,7 @@ static mrb_irep * load_irep_1(struct VM *vm, const uint8_t **pos)
       memcpy(buf, p, obj_size);
       buf[obj_size] = '\0';
       obj->tt = MRB_TT_FIXNUM;
-      obj->i = atol(buf);
+      obj->u.i = atol(buf);
     } break;
 #if MRBC_USE_FLOAT
     case 2: { // IREP_TT_FLOAT
@@ -172,7 +172,7 @@ static mrb_irep * load_irep_1(struct VM *vm, const uint8_t **pos)
       memcpy(buf, p, obj_size);
       buf[obj_size] = '\0';
       obj->tt = MRB_TT_FLOAT;
-      obj->d = atof(buf);
+      obj->u.d = atof(buf);
     } break;
 #endif
     default:

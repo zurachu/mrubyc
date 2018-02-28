@@ -46,7 +46,7 @@ mrb_class *mrbc_class_alloc(mrb_vm *vm, const char *name, mrb_class *super)
     ptr->procs = 0;
     // create value
     v.tt = MRB_TT_CLASS;
-    v.cls = ptr;
+    v.u.cls = ptr;
     // Add to global
     const_object_add(sym_id, &v);
   }
@@ -89,17 +89,17 @@ int mrbc_eq(mrb_value *v1, mrb_value *v2)
     return 1;
   case MRB_TT_FIXNUM:
   case MRB_TT_SYMBOL:
-    return v1->i == v2->i;
+    return v1->u.i == v2->u.i;
   case MRB_TT_FLOAT:
-    return v1->d == v2->d;
+    return v1->u.d == v2->u.d;
   case MRB_TT_STRING:
-    if( v1->h_str->size != v2->h_str->size ) return 0;
-    return !memcmp(v1->h_str->str, v2->h_str->str, v1->h_str->size);
+    if( v1->u.h_str->size != v2->u.h_str->size ) return 0;
+    return !memcmp(v1->u.h_str->str, v2->u.h_str->str, v1->u.h_str->size);
   case MRB_TT_ARRAY: {
-    mrb_value *array1 = v1->array;
-    mrb_value *array2 = v2->array;
-    int i, len = array1[0].i;
-    if( len != array2[0].i ) return 0;
+    mrb_value *array1 = v1->u.array;
+    mrb_value *array2 = v2->u.array;
+    int i, len = array1[0].u.i;
+    if( len != array2[0].u.i ) return 0;
     for( i=1 ; i<=len ; i++ ){
       if( !mrbc_eq(array1+i, array2+i) ) break;
     }
@@ -129,7 +129,7 @@ void mrbc_dup(mrb_vm *vm, mrb_value *v)
   case MRB_TT_PROC:
   case MRB_TT_STRING:
   case MRB_TT_RANGE:
-    mrbc_inc_ref_count(v->handle);
+    mrbc_inc_ref_count(v->u.handle);
     break;
   default:
     // Nothing
@@ -149,21 +149,21 @@ void mrbc_release(mrb_vm *vm, mrb_value *v)
 {
   switch( v->tt ) {
   case MRB_TT_PROC:
-    if( mrbc_dec_ref_count(v->handle) == 0 ) {
-      mrbc_free(vm, v->handle);
+    if( mrbc_dec_ref_count(v->u.handle) == 0 ) {
+      mrbc_free(vm, v->u.handle);
     }
     break;
 
 #if MRBC_USE_STRING
   case MRB_TT_STRING:
-    if( mrbc_dec_ref_count(v->h_str) == 0 ) {
+    if( mrbc_dec_ref_count(v->u.h_str) == 0 ) {
       mrbc_string_delete(vm, v);
     }
     break;
 #endif
 
   case MRB_TT_RANGE:
-    if( mrbc_dec_ref_count(v->handle) == 0 ) {
+    if( mrbc_dec_ref_count(v->u.handle) == 0 ) {
       mrbc_range_delete(vm, v);
     }
     break;
@@ -174,7 +174,7 @@ void mrbc_release(mrb_vm *vm, mrb_value *v)
   }
 
   v->tt = MRB_TT_EMPTY;
-  v->handle = NULL;
+  v->u.handle = NULL;
 }
 
 
@@ -247,9 +247,9 @@ int32_t mrbc_atoi( const char *s, int base )
 mrb_value mrbc_instance_new(struct VM *vm, mrb_class *cls, int size)
 {
   mrb_value v = {.tt = MRB_TT_OBJECT};
-  v.instance = (mrb_instance *)mrbc_alloc(vm, sizeof(mrb_instance) + size);
-  if( v.instance == NULL ) return v;	// ENOMEM
-  v.instance->cls = cls;
+  v.u.instance = (mrb_instance *)mrbc_alloc(vm, sizeof(mrb_instance) + size);
+  if( v.u.instance == NULL ) return v;	// ENOMEM
+  v.u.instance->cls = cls;
 
   return v;
 }
@@ -266,5 +266,5 @@ mrb_value mrbc_instance_new(struct VM *vm, mrb_class *cls, int size)
 */
 void mrbc_instance_delete(struct VM *vm, mrb_value *v)
 {
-  mrbc_raw_free( v->instance );
+  mrbc_raw_free( v->u.instance );
 }

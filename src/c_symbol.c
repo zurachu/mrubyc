@@ -9,7 +9,7 @@
 #if MRBC_USE_STRING
 static void c_symbol_to_s(mrb_vm *vm, mrb_value *v, int argc)
 {
-  mrb_value value = mrbc_string_new_cstr(vm, symid_to_str(v->i));
+  mrb_value value = mrbc_string_new_cstr(vm, symid_to_str(v->u.i));
   SET_RETURN(value);
 }
 #endif

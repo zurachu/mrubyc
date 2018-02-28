@@ -9,16 +9,16 @@
 
 static void c_hash_size(mrb_vm *vm, mrb_value *v, int argc)
 {
-  SET_INT_RETURN(v->handle->hash->i);
+  SET_INT_RETURN(v->u.handle->u.hash->u.i);
 }
 
 
 // Hash = []
 static void c_hash_get(mrb_vm *vm, mrb_value *v, int argc)
 {
-  mrb_value *hash = v->handle->hash;
+  mrb_value *hash = v->u.handle->u.hash;
   int i;
-  int n = hash->i;       // hash size
+  int n = hash->u.i;       // hash size
   mrb_value key = GET_ARG(1);  // search key
 
   // ptr: 1st entry(key) of hash
@@ -38,9 +38,9 @@ static void c_hash_get(mrb_vm *vm, mrb_value *v, int argc)
 // Hash = []=
 static void c_hash_set(mrb_vm *vm, mrb_value *v, int argc)
 {
-  mrb_value *hash = v->handle->hash;
+  mrb_value *hash = v->u.handle->u.hash;
   int i;
-  int n = hash[0].i;       // hash size
+  int n = hash[0].u.i;       // hash size
   mrb_value key = GET_ARG(1);  // search key
   mrb_value val = GET_ARG(2);  // new value
   int new_size;
@@ -69,11 +69,11 @@ static void c_hash_set(mrb_vm *vm, mrb_value *v, int argc)
     *dst++ = *src++;  // copy value
   }
   new_hash[0].tt = MRB_TT_FIXNUM;
-  new_hash[0].i = n+1;
+  new_hash[0].u.i = n+1;
   *dst++ = key;
   *dst   = val;
-  mrbc_free(vm, v->handle->hash);
-  v->handle->hash = new_hash;
+  mrbc_free(vm, v->u.handle->u.hash);
+  v->u.handle->u.hash = new_hash;
 }
 
 

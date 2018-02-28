@@ -173,7 +173,7 @@ inline static int op_loadi( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   mrbc_release(vm, &regs[ra]);
   regs[ra].tt = MRB_TT_FIXNUM;
-  regs[ra].i = GETARG_sBx(code);
+  regs[ra].u.i = GETARG_sBx(code);
 
   return 0;
 }
@@ -200,7 +200,7 @@ inline static int op_loadsym( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   mrbc_release(vm, &regs[ra]);
   regs[ra].tt = MRB_TT_SYMBOL;
-  regs[ra].i = sym_id;
+  regs[ra].u.i = sym_id;
 
   return 0;
 }
@@ -499,7 +499,7 @@ inline static int op_send( mrb_vm *vm, uint32_t code, mrb_value *regs )
   if( m->c_func ) {
     int r;
 
-    m->func(vm, regs + ra, rc);
+    m->u.func(vm, regs + ra, rc);
 
     r = ra + rc;
     while( ra < r ) {
@@ -521,7 +521,7 @@ inline static int op_send( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   // target irep
   vm->pc = 0;
-  vm->pc_irep = m->irep;
+  vm->pc_irep = m->u.irep;
 
   // new regs
   vm->reg_top += ra;
@@ -637,23 +637,23 @@ inline static int op_add( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   if( regs[ra].tt == MRB_TT_FIXNUM ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {	// in case of Fixnum, Fixnum
-      regs[ra].i += regs[ra+1].i;
+      regs[ra].u.i += regs[ra+1].u.i;
       return 0;
     }
 #if MRBC_USE_FLOAT
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {	// in case of Fixnum, Float
       regs[ra].tt = MRB_TT_FLOAT;
-      regs[ra].d = regs[ra].i + regs[ra+1].d;
+      regs[ra].u.d = regs[ra].u.i + regs[ra+1].u.d;
       return 0;
     }
   }
   if( regs[ra].tt == MRB_TT_FLOAT ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {	// in case of Float, Fixnum
-      regs[ra].d += regs[ra+1].i;
+      regs[ra].u.d += regs[ra+1].u.i;
       return 0;
     }
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {	// in case of Float, Float
-      regs[ra].d += regs[ra+1].d;
+      regs[ra].u.d += regs[ra+1].u.d;
       return 0;
     }
 #endif
@@ -682,13 +682,13 @@ inline static int op_addi( mrb_vm *vm, uint32_t code, mrb_value *regs )
   int ra = GETARG_A(code);
 
   if( regs[ra].tt == MRB_TT_FIXNUM ) {
-    regs[ra].i += GETARG_C(code);
+    regs[ra].u.i += GETARG_C(code);
     return 0;
   }
 
 #if MRBC_USE_FLOAT
   if( regs[ra].tt == MRB_TT_FLOAT ) {
-    regs[ra].d += GETARG_C(code);
+    regs[ra].u.d += GETARG_C(code);
     return 0;
   }
 #endif
@@ -715,23 +715,23 @@ inline static int op_sub( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   if( regs[ra].tt == MRB_TT_FIXNUM ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {	// in case of Fixnum, Fixnum
-      regs[ra].i -= regs[ra+1].i;
+      regs[ra].u.i -= regs[ra+1].u.i;
       return 0;
     }
 #if MRBC_USE_FLOAT
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {	// in case of Fixnum, Float
       regs[ra].tt = MRB_TT_FLOAT;
-      regs[ra].d = regs[ra].i - regs[ra+1].d;
+      regs[ra].u.d = regs[ra].u.i - regs[ra+1].u.d;
       return 0;
     }
   }
   if( regs[ra].tt == MRB_TT_FLOAT ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {	// in case of Float, Fixnum
-      regs[ra].d -= regs[ra+1].i;
+      regs[ra].u.d -= regs[ra+1].u.i;
       return 0;
     }
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {	// in case of Float, Float
-      regs[ra].d -= regs[ra+1].d;
+      regs[ra].u.d -= regs[ra+1].u.d;
       return 0;
     }
 #endif
@@ -760,13 +760,13 @@ inline static int op_subi( mrb_vm *vm, uint32_t code, mrb_value *regs )
   int ra = GETARG_A(code);
 
   if( regs[ra].tt == MRB_TT_FIXNUM ) {
-    regs[ra].i -= GETARG_C(code);
+    regs[ra].u.i -= GETARG_C(code);
     return 0;
   }
 
 #if MRBC_USE_FLOAT
   if( regs[ra].tt == MRB_TT_FLOAT ) {
-    regs[ra].d -= GETARG_C(code);
+    regs[ra].u.d -= GETARG_C(code);
     return 0;
   }
 #endif
@@ -793,23 +793,23 @@ inline static int op_mul( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   if( regs[ra].tt == MRB_TT_FIXNUM ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {	// in case of Fixnum, Fixnum
-      regs[ra].i *= regs[ra+1].i;
+      regs[ra].u.i *= regs[ra+1].u.i;
       return 0;
     }
 #if MRBC_USE_FLOAT
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {	// in case of Fixnum, Float
       regs[ra].tt = MRB_TT_FLOAT;
-      regs[ra].d = regs[ra].i * regs[ra+1].d;
+      regs[ra].u.d = regs[ra].u.i * regs[ra+1].u.d;
       return 0;
     }
   }
   if( regs[ra].tt == MRB_TT_FLOAT ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {	// in case of Float, Fixnum
-      regs[ra].d *= regs[ra+1].i;
+      regs[ra].u.d *= regs[ra+1].u.i;
       return 0;
     }
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {	// in case of Float, Float
-      regs[ra].d *= regs[ra+1].d;
+      regs[ra].u.d *= regs[ra+1].u.d;
       return 0;
     }
 #endif
@@ -839,23 +839,23 @@ inline static int op_div( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   if( regs[ra].tt == MRB_TT_FIXNUM ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {	// in case of Fixnum, Fixnum
-      regs[ra].i /= regs[ra+1].i;
+      regs[ra].u.i /= regs[ra+1].u.i;
       return 0;
     }
 #if MRBC_USE_FLOAT
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {	// in case of Fixnum, Float
       regs[ra].tt = MRB_TT_FLOAT;
-      regs[ra].d = regs[ra].i / regs[ra+1].d;
+      regs[ra].u.d = regs[ra].u.i / regs[ra+1].u.d;
       return 0;
     }
   }
   if( regs[ra].tt == MRB_TT_FLOAT ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {	// in case of Float, Fixnum
-      regs[ra].d /= regs[ra+1].i;
+      regs[ra].u.d /= regs[ra+1].u.i;
       return 0;
     }
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {	// in case of Float, Float
-      regs[ra].d /= regs[ra+1].d;
+      regs[ra].u.d /= regs[ra+1].u.d;
       return 0;
     }
 #endif
@@ -910,22 +910,22 @@ inline static int op_lt( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   if( regs[ra].tt == MRB_TT_FIXNUM ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {
-      result = regs[ra].i < regs[ra+1].i;	// in case of Fixnum, Fixnum
+      result = regs[ra].u.i < regs[ra+1].u.i;	// in case of Fixnum, Fixnum
       goto DONE;
     }
 #if MRBC_USE_FLOAT
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {
-      result = regs[ra].i < regs[ra+1].d;	// in case of Fixnum, Float
+      result = regs[ra].u.i < regs[ra+1].u.d;	// in case of Fixnum, Float
       goto DONE;
     }
   }
   if( regs[ra].tt == MRB_TT_FLOAT ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {
-      result = regs[ra].d < regs[ra+1].i;	// in case of Float, Fixnum
+      result = regs[ra].u.d < regs[ra+1].u.i;	// in case of Float, Fixnum
       goto DONE;
     }
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {
-      result = regs[ra].d < regs[ra+1].d;	// in case of Float, Float
+      result = regs[ra].u.d < regs[ra+1].u.d;	// in case of Float, Float
       goto DONE;
     }
 #endif
@@ -960,22 +960,22 @@ inline static int op_le( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   if( regs[ra].tt == MRB_TT_FIXNUM ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {
-      result = regs[ra].i <= regs[ra+1].i;	// in case of Fixnum, Fixnum
+      result = regs[ra].u.i <= regs[ra+1].u.i;	// in case of Fixnum, Fixnum
       goto DONE;
     }
 #if MRBC_USE_FLOAT
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {
-      result = regs[ra].i <= regs[ra+1].d;	// in case of Fixnum, Float
+      result = regs[ra].u.i <= regs[ra+1].u.d;	// in case of Fixnum, Float
       goto DONE;
     }
   }
   if( regs[ra].tt == MRB_TT_FLOAT ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {
-      result = regs[ra].d <= regs[ra+1].i;	// in case of Float, Fixnum
+      result = regs[ra].u.d <= regs[ra+1].u.i;	// in case of Float, Fixnum
       goto DONE;
     }
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {
-      result = regs[ra].d <= regs[ra+1].d;	// in case of Float, Float
+      result = regs[ra].u.d <= regs[ra+1].u.d;	// in case of Float, Float
       goto DONE;
     }
 #endif
@@ -1010,22 +1010,22 @@ inline static int op_gt( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   if( regs[ra].tt == MRB_TT_FIXNUM ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {
-      result = regs[ra].i > regs[ra+1].i;	// in case of Fixnum, Fixnum
+      result = regs[ra].u.i > regs[ra+1].u.i;	// in case of Fixnum, Fixnum
       goto DONE;
     }
 #if MRBC_USE_FLOAT
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {
-      result = regs[ra].i > regs[ra+1].d;	// in case of Fixnum, Float
+      result = regs[ra].u.i > regs[ra+1].u.d;	// in case of Fixnum, Float
       goto DONE;
     }
   }
   if( regs[ra].tt == MRB_TT_FLOAT ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {
-      result = regs[ra].d > regs[ra+1].i;	// in case of Float, Fixnum
+      result = regs[ra].u.d > regs[ra+1].u.i;	// in case of Float, Fixnum
       goto DONE;
     }
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {
-      result = regs[ra].d > regs[ra+1].d;	// in case of Float, Float
+      result = regs[ra].u.d > regs[ra+1].u.d;	// in case of Float, Float
       goto DONE;
     }
 #endif
@@ -1060,22 +1060,22 @@ inline static int op_ge( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   if( regs[ra].tt == MRB_TT_FIXNUM ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {
-      result = regs[ra].i >= regs[ra+1].i;	// in case of Fixnum, Fixnum
+      result = regs[ra].u.i >= regs[ra+1].u.i;	// in case of Fixnum, Fixnum
       goto DONE;
     }
 #if MRBC_USE_FLOAT
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {
-      result = regs[ra].i >= regs[ra+1].d;	// in case of Fixnum, Float
+      result = regs[ra].u.i >= regs[ra+1].u.d;	// in case of Fixnum, Float
       goto DONE;
     }
   }
   if( regs[ra].tt == MRB_TT_FLOAT ) {
     if( regs[ra+1].tt == MRB_TT_FIXNUM ) {
-      result = regs[ra].d >= regs[ra+1].i;	// in case of Float, Fixnum
+      result = regs[ra].u.d >= regs[ra+1].u.i;	// in case of Float, Fixnum
       goto DONE;
     }
     if( regs[ra+1].tt == MRB_TT_FLOAT ) {
-      result = regs[ra].d >= regs[ra+1].d;	// in case of Float, Float
+      result = regs[ra].u.d >= regs[ra+1].u.d;	// in case of Float, Float
       goto DONE;
     }
 #endif
@@ -1112,7 +1112,7 @@ inline static int op_array( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   mrb_value v;
   v.tt = MRB_TT_ARRAY;
-  v.array = 0;
+  v.u.array = 0;
 
   if( arg_c >= 0 ){
     mrb_object *p;
@@ -1120,7 +1120,7 @@ inline static int op_array( mrb_vm *vm, uint32_t code, mrb_value *regs )
     // Handle
     mrb_value *handle = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value));
     if( handle == NULL ) return 0;  // ENOMEM
-    v.array = handle;
+    v.u.array = handle;
     handle->tt = MRB_TT_HANDLE;
 
     // ptr[0] : array info
@@ -1128,9 +1128,9 @@ inline static int op_array( mrb_vm *vm, uint32_t code, mrb_value *regs )
     ptr = (mrb_value*)mrbc_alloc(vm, sizeof(mrb_value)*(arg_c + 1));
     if( ptr == NULL ) return 0;  // ENOMEM
 
-    handle->array = ptr;
+    handle->u.array = ptr;
     ptr->tt = MRB_TT_FIXNUM;
-    ptr->i = arg_c;
+    ptr->u.i = arg_c;
 
     p = ptr + 1;
     while( arg_c > 0 ){
@@ -1165,9 +1165,9 @@ inline static int op_string( mrb_vm *vm, uint32_t code, mrb_value *regs )
   mrb_object *pool_obj = vm->pc_irep->pools[rb];
 
   /* CAUTION: pool_obj->str - 2. see IREP POOL structure. */
-  int len = bin_to_uint16(pool_obj->str - 2);
-  mrb_value value = mrbc_string_new(vm, pool_obj->str, len);
-  if( value.h_str == NULL ) return -1;		// ENOMEM
+  int len = bin_to_uint16(pool_obj->u.str - 2);
+  mrb_value value = mrbc_string_new(vm, pool_obj->u.str, len);
+  if( value.u.h_str == NULL ) return -1;		// ENOMEM
 
   mrbc_release(vm, &regs[ra]);
   regs[ra] = value;
@@ -1205,16 +1205,16 @@ inline static int op_hash( mrb_vm *vm, uint32_t code, mrb_value *regs )
   handle = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value));
   if( handle == NULL ) return 0;  // ENOMEM
 
-  v.hash = handle;
+  v.u.hash = handle;
   handle->tt = MRB_TT_HANDLE;
 
   // make hash
   hash = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value)*(arg_c*2+1));
   if( hash == NULL ) return 0;  // ENOMEM
-  handle->hash = hash;
+  handle->u.hash = hash;
 
   hash[0].tt = MRB_TT_FIXNUM;
-  hash[0].i = arg_c;
+  hash[0].u.i = arg_c;
 
   src = &regs[arg_b];
   dst = &hash[1];
@@ -1254,11 +1254,11 @@ inline static int op_lambda( mrb_vm *vm, uint32_t code, mrb_value *regs )
   mrb_proc *proc = mrbc_rproc_alloc(vm, "(lambda)");
 
   proc->c_func = 0;
-  proc->irep = vm->pc_irep->reps[rb];
+  proc->u.irep = vm->pc_irep->reps[rb];
 
   mrbc_release(vm, &regs[ra]);
   regs[ra].tt = MRB_TT_PROC;
-  regs[ra].proc = proc;
+  regs[ra].u.proc = proc;
 
   return 0;
 }
@@ -1287,7 +1287,7 @@ inline static int op_range( mrb_vm *vm, uint32_t code, mrb_value *regs )
   mrbc_dup(vm, &regs[rb+1]);
 
   value = mrbc_range_new(vm, &regs[rb], &regs[rb+1], rc);
-  if( value.range == NULL ) return -1;		// ENOMEM
+  if( value.u.range == NULL ) return -1;		// ENOMEM
 
   mrbc_release(vm, &regs[ra]);
   regs[ra] = value;
@@ -1324,13 +1324,13 @@ inline static int op_class( mrb_vm *vm, uint32_t code, mrb_value *regs )
   // super: pointer to super class
   mrb_class *super  = mrbc_class_object;
   if( regs[ra+1].tt == MRB_TT_CLASS ){
-    super = regs[ra+1].cls;
+    super = regs[ra+1].u.cls;
   }
 
   cls = mrbc_class_alloc(vm, sym, super);
 
   ret.tt = MRB_TT_CLASS;
-  ret.cls = cls;
+  ret.u.cls = cls;
 
   regs[ra] = ret;
 
@@ -1390,10 +1390,10 @@ inline static int op_method( mrb_vm *vm, uint32_t code, mrb_value *regs )
 {
   int ra = GETARG_A(code);
   int rb = GETARG_B(code);
-  mrb_proc *rproc = regs[ra+1].proc;
+  mrb_proc *rproc = regs[ra+1].u.proc;
 
   if( regs[ra].tt == MRB_TT_CLASS ) {
-    mrb_class *cls = regs[ra].cls;
+    mrb_class *cls = regs[ra].u.cls;
     // sym_id : method name
     mrb_irep *cur_irep = vm->pc_irep;
     char *sym = find_irep_symbol(cur_irep->ptr_to_sym, rb);
@@ -1427,7 +1427,7 @@ inline static int op_tclass( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   mrbc_release(vm, &regs[ra]);
   regs[ra].tt = MRB_TT_CLASS;
-  regs[ra].cls = vm->target_class;
+  regs[ra].u.cls = vm->target_class;
 
   return 0;
 }
@@ -1583,7 +1583,7 @@ void mrbc_vm_begin(mrb_vm *vm)
 
   // set self to reg[0]
   vm->regs[0].tt = MRB_TT_USERTOP;
-  vm->regs[0].cls = cls;
+  vm->regs[0].u.cls = cls;
 
   vm->callinfo_top = 0;
   memset(vm->callinfo, 0, sizeof(vm->callinfo));
