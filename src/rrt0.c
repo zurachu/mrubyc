@@ -39,7 +39,6 @@ const int TIMESLICE_TICK = 10; // 10 * 1ms(HardwareTimer)  255 max
 #endif
 
 #define VM2TCB(p) ((MrbcTcb *)((uint8_t *)p - offsetof(MrbcTcb, vm)))
-#define MRBC_MUTEX_TRACE(...) ((void)0)
 
 
 /***** Typedefs *************************************************************/
@@ -661,8 +660,6 @@ MrbcMutex * mrbc_mutex_init( MrbcMutex *mutex )
 */
 int mrbc_mutex_lock( MrbcMutex *mutex, MrbcTcb *tcb )
 {
-  MRBC_MUTEX_TRACE("mutex lock / MUTEX: %p TCB: %p",  mutex, tcb );
-
   int ret = 0;
   hal_disable_irq();
 
@@ -670,10 +667,8 @@ int mrbc_mutex_lock( MrbcMutex *mutex, MrbcTcb *tcb )
   if( mutex->lock == 0 ) {      // a future does use TAS?
     mutex->lock = 1;
     mutex->tcb = tcb;
-    MRBC_MUTEX_TRACE("  lock OK\n" );
     goto DONE;
   }
-  MRBC_MUTEX_TRACE("  lock FAIL\n" );
 
   // Can't lock mutex
   // check recursive lock.
@@ -705,8 +700,6 @@ int mrbc_mutex_unlock( MrbcMutex *mutex, MrbcTcb *tcb )
 {
   int flag_preemption;
 
-  MRBC_MUTEX_TRACE("mutex unlock / MUTEX: %p TCB: %p\n",  mutex, tcb );
-
   // check some parameters.
   if( !mutex->lock ) return 1;
   if( mutex->tcb != tcb ) return 2;
@@ -717,7 +710,6 @@ int mrbc_mutex_unlock( MrbcMutex *mutex, MrbcTcb *tcb )
   tcb = q_waiting_;
   while( tcb != NULL ) {
     if( tcb->reason == TASKREASON_MUTEX && tcb->u.mutex == mutex ) {
-      MRBC_MUTEX_TRACE("SW: TCB: %p\n", tcb );
       mutex->tcb = tcb;
       q_delete_task(tcb);
       tcb->state = TASKSTATE_READY;
@@ -737,7 +729,6 @@ int mrbc_mutex_unlock( MrbcMutex *mutex, MrbcTcb *tcb )
   }
   else {
     // unlock mutex
-    MRBC_MUTEX_TRACE("mutex unlock all.\n" );
     mutex->lock = 0;
   }
 
@@ -753,8 +744,6 @@ int mrbc_mutex_unlock( MrbcMutex *mutex, MrbcTcb *tcb )
 */
 int mrbc_mutex_trylock( MrbcMutex *mutex, MrbcTcb *tcb )
 {
-  MRBC_MUTEX_TRACE("mutex try lock / MUTEX: %p TCB: %p",  mutex, tcb );
-
   int ret;
   hal_disable_irq();
 
@@ -762,10 +751,8 @@ int mrbc_mutex_trylock( MrbcMutex *mutex, MrbcTcb *tcb )
     mutex->lock = 1;
     mutex->tcb = tcb;
     ret = 0;
-    MRBC_MUTEX_TRACE("  trylock OK\n" );
   }
   else {
-    MRBC_MUTEX_TRACE("  trylock FAIL\n" );
     ret = 1;
   }
 
