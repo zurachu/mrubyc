@@ -118,9 +118,11 @@ static uint16_t free_sli_bitmap[MRBC_ALLOC_FLI_BIT_WIDTH + 2]; // + sentinel
 */
 static inline int nlz16(uint16_t x)
 {
+  int n;
+
   if( x == 0 ) return 16;
 
-  int n = 1;
+  n = 1;
   if((x >>  8) == 0 ) { n += 8; x <<= 8; }
   if((x >> 12) == 0 ) { n += 4; x <<= 4; }
   if((x >> 14) == 0 ) { n += 2; x <<= 2; }
@@ -136,6 +138,8 @@ static inline int nlz16(uint16_t x)
 */
 static int calc_index(unsigned int alloc_size)
 {
+  int fli, shift, sli, index;
+
   // check overflow
   if( (alloc_size >> (MRBC_ALLOC_FLI_BIT_WIDTH
                       + MRBC_ALLOC_SLI_BIT_WIDTH
@@ -144,15 +148,15 @@ static int calc_index(unsigned int alloc_size)
   }
 
   // calculate First Level Index.
-  int fli = 16 -
+  fli = 16 -
     nlz16( alloc_size >> (MRBC_ALLOC_SLI_BIT_WIDTH + MRBC_ALLOC_IGNORE_LSBS) );
 
   // caliculate Second Level Index.
-  int shift = (fli == 0) ? (fli + MRBC_ALLOC_IGNORE_LSBS) :
+  shift = (fli == 0) ? (fli + MRBC_ALLOC_IGNORE_LSBS) :
 			   (fli + MRBC_ALLOC_IGNORE_LSBS - 1);
 
-  int sli   = (alloc_size >> shift) & ((1 << MRBC_ALLOC_SLI_BIT_WIDTH) - 1);
-  int index = (fli << MRBC_ALLOC_SLI_BIT_WIDTH) + sli;
+  sli   = (alloc_size >> shift) & ((1 << MRBC_ALLOC_SLI_BIT_WIDTH) - 1);
+  index = (fli << MRBC_ALLOC_SLI_BIT_WIDTH) + sli;
 
   assert(fli >= 0);
   assert(fli <= MRBC_ALLOC_FLI_BIT_WIDTH);
@@ -170,11 +174,13 @@ static int calc_index(unsigned int alloc_size)
 */
 static void add_free_block(FREE_BLOCK *target)
 {
+  int index, fli, sli;
+
   target->f = FLAG_FREE_BLOCK;
 
-  int index = calc_index(target->size) - 1;
-  int fli   = FLI(index);
-  int sli   = SLI(index);
+  index = calc_index(target->size) - 1;
+  fli   = FLI(index);
+  sli   = SLI(index);
 
   free_fli_bitmap      |= (MSB_BIT1 >> fli);
   free_sli_bitmap[fli] |= (MSB_BIT1 >> sli);
@@ -234,12 +240,14 @@ static void remove_index(FREE_BLOCK *target)
 */
 static inline FREE_BLOCK* split_block(FREE_BLOCK *target, unsigned int size)
 {
+  FREE_BLOCK *split, *next;
+
   if( target->size < (size + sizeof(FREE_BLOCK)
                       + (1 << MRBC_ALLOC_IGNORE_LSBS)) ) return NULL;
 
   // split block, free
-  FREE_BLOCK *split = (FREE_BLOCK *)((uint8_t *)target + size);
-  FREE_BLOCK *next  = (FREE_BLOCK *)PHYS_NEXT(target);
+  split = (FREE_BLOCK *)((uint8_t *)target + size);
+  next  = (FREE_BLOCK *)PHYS_NEXT(target);
 
   split->size  = target->size - size;
   SET_PHYS_PREV(target, split);
@@ -285,6 +293,8 @@ static void merge_block(FREE_BLOCK *ptr1, FREE_BLOCK *ptr2)
 */
 void mrbc_init_alloc(void *ptr, unsigned int size)
 {
+  FREE_BLOCK *block;
+
   assert( size != 0 );
   assert( size <= (MRBC_ALLOC_MEMSIZE_T)(~0) );
 
@@ -292,7 +302,7 @@ void mrbc_init_alloc(void *ptr, unsigned int size)
   memory_pool_size = size;
 
   // initialize memory pool
-  FREE_BLOCK *block = (FREE_BLOCK *)memory_pool;
+  block = (FREE_BLOCK *)memory_pool;
   block->t           = FLAG_TAIL_BLOCK;
   block->f           = FLAG_FREE_BLOCK;
   block->size        = memory_pool_size;
@@ -311,6 +321,9 @@ void mrbc_init_alloc(void *ptr, unsigned int size)
 */
 void * mrbc_raw_alloc(unsigned int size)
 {
+  int index, fli, sli;
+  FREE_BLOCK *target, *release;
+
   // TODO: maximum alloc size
   //  (1 << (FLI_BIT_WIDTH + SLI_BIT_WIDTH + IGNORE_LSBS)) - alpha
 
@@ -329,11 +342,11 @@ void * mrbc_raw_alloc(unsigned int size)
 #endif
 
   // find free memory block.
-  int index = calc_index(alloc_size);
-  int fli   = FLI(index);
-  int sli   = SLI(index);
+  index = calc_index(alloc_size);
+  fli   = FLI(index);
+  sli   = SLI(index);
 
-  FREE_BLOCK *target = free_blocks[index];
+  target = free_blocks[index];
 
   if( target == NULL ) {
     // uses free_fli/sli_bitmap table.
@@ -377,7 +390,7 @@ void * mrbc_raw_alloc(unsigned int size)
   }
 
   // split a block
-  FREE_BLOCK *release = split_block(target, alloc_size);
+  release = split_block(target, alloc_size);
   if( release != NULL ) {
     add_free_block(release);
   }
@@ -405,13 +418,15 @@ void mrbc_raw_free(void *ptr)
   // check next block, merge?
   FREE_BLOCK *next = (FREE_BLOCK *)PHYS_NEXT(target);
 
+  FREE_BLOCK *prev;
+
   if((target->t == FLAG_NOT_TAIL_BLOCK) && (next->f == FLAG_FREE_BLOCK)) {
     remove_index(next);
     merge_block(target, next);
   }
 
   // check previous block, merge?
-  FREE_BLOCK *prev = (FREE_BLOCK *)PHYS_PREV(target);
+  prev = (FREE_BLOCK *)PHYS_PREV(target);
 
   if((prev != NULL) && (prev->f == FLAG_FREE_BLOCK)) {
     remove_index(prev);
@@ -434,6 +449,8 @@ void mrbc_raw_free(void *ptr)
 */
 void * mrbc_raw_realloc(void *ptr, unsigned int size)
 {
+  uint8_t *new_ptr;
+
   USED_BLOCK  *target     = (USED_BLOCK *)((uint8_t *)ptr - sizeof(USED_BLOCK));
   unsigned int alloc_size = size + sizeof(FREE_BLOCK);
 
@@ -477,7 +494,7 @@ void * mrbc_raw_realloc(void *ptr, unsigned int size)
 
   // expand part2.
   // new alloc and copy
-  uint8_t *new_ptr = mrbc_raw_alloc(size);
+  new_ptr = mrbc_raw_alloc(size);
   if( new_ptr == NULL ) return NULL;  // ENOMEM
 
   memcpy(new_ptr, ptr, target->size - sizeof(USED_BLOCK));
@@ -622,10 +639,12 @@ void mrbc_set_ref_count(void *ptr, const int cnt)
 */
 void mrbc_inc_ref_count(void *ptr)
 {
+  int cnt;
+
   assert( ptr > (void*)memory_pool );
   assert( ptr < (void*)(memory_pool + memory_pool_size ) );
 
-  int cnt = GET_REF_COUNT(ptr);
+  cnt = GET_REF_COUNT(ptr);
   assert( cnt > 0 );
   assert( cnt != 0xff );
 
@@ -642,10 +661,12 @@ void mrbc_inc_ref_count(void *ptr)
 */
 int mrbc_dec_ref_count(void *ptr)
 {
+  int cnt;
+
   assert( ptr > (void*)memory_pool );
   assert( ptr < (void*)(memory_pool + memory_pool_size ) );
 
-  int cnt = GET_REF_COUNT(ptr);
+  cnt = GET_REF_COUNT(ptr);
   assert( cnt != 0 );
 
   cnt--;
@@ -666,13 +687,16 @@ int mrbc_dec_ref_count(void *ptr)
 */
 void mrbc_alloc_statistics(int *total, int *used, int *free, int *flagmentation)
 {
+  USED_BLOCK *ptr;
+  int flag_used_free;
+
   *total = memory_pool_size;
   *used = 0;
   *free = 0;
   *flagmentation = 0;
 
-  USED_BLOCK *ptr = (USED_BLOCK *)memory_pool;
-  int flag_used_free = ptr->f;
+  ptr = (USED_BLOCK *)memory_pool;
+  flag_used_free = ptr->f;
   while( 1 ) {
     if( ptr->f ) {
       *free += ptr->size;

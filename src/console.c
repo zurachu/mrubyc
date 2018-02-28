@@ -29,14 +29,15 @@
 */
 void console_printf(const char *fstr, ...)
 {
+  MrbcPrintf pf;
+  char buf[82];
+  int ret;
+
   va_list ap;
   va_start(ap, fstr);
 
-  MrbcPrintf pf;
-  char buf[82];
   mrbc_printf_init( &pf, buf, sizeof(buf), fstr );
 
-  int ret;
   while( 1 ) {
     ret = mrbc_printf_main( &pf );
     if( mrbc_printf_len( &pf ) ) {
@@ -167,12 +168,14 @@ int mrbc_printf_main( MrbcPrintf *pf )
 */
 int mrbc_printf_char( MrbcPrintf *pf, int ch )
 {
+  int width;
+
   if( pf->fmt.flag_minus ) {
     if( pf->p == pf->buf_end ) return -1;
     *pf->p++ = ch;
   }
 
-  int width = pf->fmt.width;
+  width = pf->fmt.width;
   while( --width > 0 ) {
     if( pf->p == pf->buf_end ) return -1;
     *pf->p++ = ' ';
@@ -201,15 +204,16 @@ int mrbc_printf_char( MrbcPrintf *pf, int ch )
 int mrbc_printf_str( MrbcPrintf *pf, const char *str, int pad )
 {
   int ret = 0;
+  int len, tw, remain, n_pad;
 
   if( str == NULL ) str = "(null)";
-  int len = strlen(str);
+  len = strlen(str);
   if( pf->fmt.precision && len > pf->fmt.precision ) len = pf->fmt.precision;
 
-  int tw = len;
+  tw = len;
   if( pf->fmt.width > len ) tw = pf->fmt.width;
 
-  int remain = pf->buf_end - pf->p;
+  remain = pf->buf_end - pf->p;
   if( len > remain ) {
     len = remain;
     ret = -1;
@@ -219,7 +223,7 @@ int mrbc_printf_str( MrbcPrintf *pf, const char *str, int pad )
     ret = -1;
   }
 
-  int n_pad = tw - len;
+  n_pad = tw - len;
 
   if( !pf->fmt.flag_minus ) {
     while( n_pad-- > 0 ) {
@@ -252,6 +256,9 @@ int mrbc_printf_int( MrbcPrintf *pf, int32_t value, int base )
 {
   int sign = 0;
   uint32_t v = (uint32_t)value;
+  int bias_a, pad;
+  char buf[32+2];	// int32 + terminate + 1
+  char *p;
 
   if( pf->fmt.type == 'd' || pf->fmt.type == 'i' ) {	// signed.
     if( value < 0 ) {
@@ -269,11 +276,10 @@ int mrbc_printf_int( MrbcPrintf *pf, int32_t value, int base )
   }
   pf->fmt.precision = 0;
 
-  int bias_a = (pf->fmt.type == 'X') ? 'A' - 10 : 'a' - 10;
+  bias_a = (pf->fmt.type == 'X') ? 'A' - 10 : 'a' - 10;
 
   // create string to local buffer
-  char buf[32+2];	// int32 + terminate + 1
-  char *p = buf + sizeof(buf) - 1;
+  p = buf + sizeof(buf) - 1;
   *p = '\0';
   do {
     int i = v % base;
@@ -282,7 +288,6 @@ int mrbc_printf_int( MrbcPrintf *pf, int32_t value, int base )
   } while( v != 0 );
 
   // decide pad character and output sign character
-  int pad;
   if( pf->fmt.flag_zero ) {
     pad = '0';
     if( sign ) {

@@ -42,9 +42,11 @@ static uint32_t free_vm_bitmap[MAX_VM_COUNT / 32 + 1];
 */
 static inline int nlz32(uint32_t x)
 {
+  int n;
+
   if( x == 0 ) return 32;
 
-  int n = 1;
+  n = 1;
   if((x >> 16) == 0 ) { n += 16; x <<= 16; }
   if((x >> 24) == 0 ) { n +=  8; x <<=  8; }
   if((x >> 28) == 0 ) { n +=  4; x <<=  4; }
@@ -141,12 +143,13 @@ inline static int op_loadl( mrb_vm *vm, uint32_t code, mrb_value *regs )
 {
   int ra = GETARG_A(code);
   int rb = GETARG_Bx(code);
+  mrb_object *pool_obj;
 
   mrbc_release(vm, &regs[ra]);
 
   // regs[ra] = vm->pc_irep->pools[rb];
 
-  mrb_object *pool_obj = vm->pc_irep->pools[rb];
+  pool_obj = vm->pc_irep->pools[rb];
   regs[ra] = *pool_obj;
 
   return 0;
@@ -466,6 +469,10 @@ inline static int op_send( mrb_vm *vm, uint32_t code, mrb_value *regs )
   mrb_value recv = regs[ra];
   int rb = GETARG_B(code);  // index of method sym
   int rc = GETARG_C(code);  // number of params
+  char *sym;
+  mrb_sym sym_id;
+  mrb_proc *m;
+  mrb_callinfo *callinfo;
 
   // Block param
   int bidx = ra + rc + 1;
@@ -479,9 +486,9 @@ inline static int op_send( mrb_vm *vm, uint32_t code, mrb_value *regs )
     }
   }
 
-  char *sym = find_irep_symbol(vm->pc_irep->ptr_to_sym, rb);
-  mrb_sym sym_id = str_to_symid(sym);
-  mrb_proc *m = find_method(vm, recv, sym_id);
+  sym = find_irep_symbol(vm->pc_irep->ptr_to_sym, rb);
+  sym_id = str_to_symid(sym);
+  m = find_method(vm, recv, sym_id);
 
   if( m == 0 ) {
     console_printf("No method. vtype=%d method='%s'\n", recv.tt, sym);
@@ -490,9 +497,11 @@ inline static int op_send( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   // m is C func
   if( m->c_func ) {
+    int r;
+
     m->func(vm, regs + ra, rc);
 
-    int r = ra + rc;
+    r = ra + rc;
     while( ra < r ) {
       mrbc_release(vm, &regs[r]);
       r--;
@@ -502,7 +511,7 @@ inline static int op_send( mrb_vm *vm, uint32_t code, mrb_value *regs )
 
   // m is Ruby method.
   // callinfo
-  mrb_callinfo *callinfo = vm->callinfo + vm->callinfo_top;
+  callinfo = vm->callinfo + vm->callinfo_top;
   callinfo->reg_top = vm->reg_top;
   callinfo->pc_irep = vm->pc_irep;
   callinfo->pc = vm->pc;
@@ -558,6 +567,9 @@ inline static int op_enter( mrb_vm *vm, uint32_t code, mrb_value *regs )
 */
 inline static int op_return( mrb_vm *vm, uint32_t code, mrb_value *regs )
 {
+  mrb_callinfo *callinfo;
+  int reg_top;
+
   // return value
   int ra = GETARG_A(code);
   if( ra != 0 ){
@@ -567,8 +579,8 @@ inline static int op_return( mrb_vm *vm, uint32_t code, mrb_value *regs )
   }
   // restore irep,pc,regs
   vm->callinfo_top--;
-  mrb_callinfo *callinfo = vm->callinfo + vm->callinfo_top;
-  int reg_top = vm->reg_top;
+  callinfo = vm->callinfo + vm->callinfo_top;
+  reg_top = vm->reg_top;
   vm->reg_top = callinfo->reg_top;
   // clear regs and restore vm->reg_top
   while( reg_top > callinfo->reg_top ){
@@ -1103,13 +1115,14 @@ inline static int op_array( mrb_vm *vm, uint32_t code, mrb_value *regs )
   v.array = 0;
 
   if( arg_c >= 0 ){
+    mrb_object *p;
+
     // Handle
     mrb_value *handle = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value));
     if( handle == NULL ) return 0;  // ENOMEM
     v.array = handle;
     handle->tt = MRB_TT_HANDLE;
 
-    mrb_object *p;
     // ptr[0] : array info
     // ptr[1..] : array elements
     ptr = (mrb_value*)mrbc_alloc(vm, sizeof(mrb_value)*(arg_c + 1));
@@ -1179,6 +1192,8 @@ inline static int op_string( mrb_vm *vm, uint32_t code, mrb_value *regs )
 */
 inline static int op_hash( mrb_vm *vm, uint32_t code, mrb_value *regs )
 {
+  mrb_value *handle, *hash, *src, *dst;
+
   int arg_a = GETARG_A(code);
   int arg_b = GETARG_B(code);
   int arg_c = GETARG_C(code);
@@ -1187,22 +1202,22 @@ inline static int op_hash( mrb_vm *vm, uint32_t code, mrb_value *regs )
   v.tt = MRB_TT_HASH;
 
   // make handle for hash pair
-  mrb_value *handle = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value));
+  handle = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value));
   if( handle == NULL ) return 0;  // ENOMEM
 
   v.hash = handle;
   handle->tt = MRB_TT_HANDLE;
 
   // make hash
-  mrb_value *hash = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value)*(arg_c*2+1));
+  hash = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value)*(arg_c*2+1));
   if( hash == NULL ) return 0;  // ENOMEM
   handle->hash = hash;
 
   hash[0].tt = MRB_TT_FIXNUM;
   hash[0].i = arg_c;
 
-  mrb_value *src = &regs[arg_b];
-  mrb_value *dst = &hash[1];
+  src = &regs[arg_b];
+  dst = &hash[1];
   while( arg_c > 0 ){
     // copy key
     *dst++ = *src++;
@@ -1262,6 +1277,8 @@ inline static int op_lambda( mrb_vm *vm, uint32_t code, mrb_value *regs )
 */
 inline static int op_range( mrb_vm *vm, uint32_t code, mrb_value *regs )
 {
+  mrb_value value;
+
   int ra = GETARG_A(code);
   int rb = GETARG_B(code);
   int rc = GETARG_C(code);
@@ -1269,7 +1286,7 @@ inline static int op_range( mrb_vm *vm, uint32_t code, mrb_value *regs )
   mrbc_dup(vm, &regs[rb]);
   mrbc_dup(vm, &regs[rb+1]);
 
-  mrb_value value = mrbc_range_new(vm, &regs[rb], &regs[rb+1], rc);
+  value = mrbc_range_new(vm, &regs[rb], &regs[rb+1], rc);
   if( value.range == NULL ) return -1;		// ENOMEM
 
   mrbc_release(vm, &regs[ra]);
@@ -1294,6 +1311,9 @@ inline static int op_range( mrb_vm *vm, uint32_t code, mrb_value *regs )
 */
 inline static int op_class( mrb_vm *vm, uint32_t code, mrb_value *regs )
 {
+  mrb_class *cls;
+  mrb_value ret;
+
   int ra = GETARG_A(code);
   int rb = GETARG_B(code);
 
@@ -1307,9 +1327,8 @@ inline static int op_class( mrb_vm *vm, uint32_t code, mrb_value *regs )
     super = regs[ra+1].cls;
   }
 
-  mrb_class *cls = mrbc_class_alloc(vm, sym, super);
+  cls = mrbc_class_alloc(vm, sym, super);
 
-  mrb_value ret;
   ret.tt = MRB_TT_CLASS;
   ret.cls = cls;
 
@@ -1464,6 +1483,9 @@ mrb_irep *new_irep(mrb_vm *vm)
 */
 mrb_vm *mrbc_vm_open(mrb_vm *vm_arg)
 {
+  int vm_id;
+  int i;
+
   mrb_vm *vm;
   if( (vm = vm_arg) == NULL ) {
     // allocate memory.
@@ -1472,8 +1494,7 @@ mrb_vm *mrbc_vm_open(mrb_vm *vm_arg)
   }
 
   // allocate vm id.
-  int vm_id = 0;
-  int i;
+  vm_id = 0;
   for( i = 0; i < Num(free_vm_bitmap); i++ ) {
     int n = nlz32( ~free_vm_bitmap[i] );
     if( n < FREE_BITMAP_WIDTH ) {
@@ -1550,12 +1571,14 @@ void mrbc_vm_close(mrb_vm *vm)
 */
 void mrbc_vm_begin(mrb_vm *vm)
 {
+  mrb_class *cls;
+
   vm->pc_irep = vm->irep;
   vm->pc = 0;
   vm->reg_top = 0;
   memset(vm->regs, 0, sizeof(vm->regs));
 
-  mrb_class *cls = mrbc_class_alloc(vm, "UserTop", mrbc_class_object);
+  cls = mrbc_class_alloc(vm, "UserTop", mrbc_class_object);
   vm->user_top = cls;
 
   // set self to reg[0]
@@ -1598,15 +1621,18 @@ int mrbc_vm_run( mrb_vm *vm )
   int ret = 0;
 
   do {
+    mrb_value *regs;
+    int opcode;
+
     // get one bytecode
     uint32_t code = bin_to_uint32(vm->pc_irep->code + vm->pc * 4);
     vm->pc++;
 
     // regs
-    mrb_value *regs = vm->regs + vm->reg_top;
+    regs = vm->regs + vm->reg_top;
 
     // Dispatch
-    int opcode = GET_OPCODE(code);
+    opcode = GET_OPCODE(code);
     switch( opcode ) {
     case OP_NOP:        ret = op_nop       (vm, code, regs); break;
     case OP_MOVE:       ret = op_move      (vm, code, regs); break;

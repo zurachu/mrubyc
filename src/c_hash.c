@@ -43,6 +43,8 @@ static void c_hash_set(mrb_vm *vm, mrb_value *v, int argc)
   int n = hash[0].i;       // hash size
   mrb_value key = GET_ARG(1);  // search key
   mrb_value val = GET_ARG(2);  // new value
+  int new_size;
+  mrb_value *new_hash, *src, *dst;
 
   mrb_value *ptr = &hash[1];
   for( i=0 ; i<n ; i++ ){
@@ -54,14 +56,14 @@ static void c_hash_set(mrb_vm *vm, mrb_value *v, int argc)
 
   // key was not found
   // add hash entry (key and val)
-  int new_size = (n+1)*2 + 1;
+  new_size = (n+1)*2 + 1;
 
   // use alloc instead of realloc, realloc has some bugs?
-  mrb_value *new_hash = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value)*new_size);
+  new_hash = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value)*new_size);
   if( new_hash == NULL ) return;  // ENOMEM
 
-  mrb_value *src = &hash[1];
-  mrb_value *dst = &new_hash[1];
+  src = &hash[1];
+  dst = &new_hash[1];
   for( i=0 ; i<n ; i++ ){
     *dst++ = *src++;  // copy key
     *dst++ = *src++;  // copy value

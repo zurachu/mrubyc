@@ -192,6 +192,7 @@ int32_t mrbc_atoi( const char *s, int base )
 {
   int ret = 0;
   int sign = 0;
+  int ch;
 
  REDO:
   switch( *s ) {
@@ -207,7 +208,6 @@ int32_t mrbc_atoi( const char *s, int base )
     goto REDO;
   }
 
-  int ch;
   while( (ch = *s++) != '\0' ) {
     int n;
 

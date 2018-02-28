@@ -131,11 +131,12 @@ void mrbc_funcall(mrb_vm *vm, const char *name, mrb_value *v, int argc)
 {
   mrb_sym sym_id = str_to_symid(name);
   mrb_proc *m = find_method(vm, v[0], sym_id);
+  mrb_callinfo *callinfo;
   
   if( m==0 ) return;   // no initialize method
   // call initialize method 
   
-  mrb_callinfo *callinfo = vm->callinfo + vm->callinfo_top;
+  callinfo = vm->callinfo + vm->callinfo_top;
   callinfo->reg_top = vm->reg_top;
   callinfo->pc_irep = vm->pc_irep;
   callinfo->pc = vm->pc;
@@ -275,14 +276,18 @@ static void c_object_debug(mrb_vm *vm, mrb_value *v, int argc)
 
 static void c_object_instance_methods(mrb_vm *vm, mrb_value *v, int argc)
 {
+  int flag_first;
+  mrb_class *cls;
+  mrb_proc *proc;
+
   // TODO: check argument.
 
   // temporary code for operation check.
   console_printf( "[" );
-  int flag_first = 1;
+  flag_first = 1;
 
-  mrb_class *cls = find_class_by_object( vm, v );
-  mrb_proc *proc = cls->procs;
+  cls = find_class_by_object( vm, v );
+  proc = cls->procs;
   while( proc ) {
     console_printf( "%s:%s", (flag_first ? "" : ", "),
 		    symid_to_str(proc->sym_id) );

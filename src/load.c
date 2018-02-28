@@ -102,6 +102,7 @@ static int load_header(struct VM *vm, const uint8_t **pos)
 static mrb_irep * load_irep_1(struct VM *vm, const uint8_t **pos)
 {
   const uint8_t *p = *pos + 4;			// skip record size
+  int i, slen;
 
   // new irep
   mrb_irep *irep = new_irep(0);
@@ -142,11 +143,11 @@ static mrb_irep * load_irep_1(struct VM *vm, const uint8_t **pos)
     }
   }
 
-  int i;
   for( i = 0; i < irep->plen; i++ ) {
+    mrb_object *obj;
     int tt = *p++;
     int obj_size = bin_to_uint16(p);	p += 2;
-    mrb_object *obj = mrbc_obj_alloc(0, MRB_TT_EMPTY);
+    obj = mrbc_obj_alloc(0, MRB_TT_EMPTY);
     if( obj == NULL ) {
       vm->error_code = LOAD_FILE_IREP_ERROR_ALLOCATION;
       return NULL;
@@ -184,7 +185,7 @@ static mrb_irep * load_irep_1(struct VM *vm, const uint8_t **pos)
 
   // SYMS BLOCK
   irep->ptr_to_sym = (uint8_t*)p;
-  int slen = bin_to_uint32(p);		p += 4;
+  slen = bin_to_uint32(p);		p += 4;
   while( --slen >= 0 ) {
     int s = bin_to_uint16(p);		p += 2;
     p += s+1;
@@ -206,10 +207,11 @@ static mrb_irep * load_irep_1(struct VM *vm, const uint8_t **pos)
 */
 static mrb_irep * load_irep_0(struct VM *vm, const uint8_t **pos)
 {
+  int i;
+
   mrb_irep *irep = load_irep_1(vm, pos);
   if( !irep ) return NULL;
 
-  int i;
   for( i = 0; i < irep->rlen; i++ ) {
     irep->reps[i] = load_irep_0(vm, pos);
   }

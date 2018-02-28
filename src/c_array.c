@@ -72,24 +72,21 @@ static void c_array_set(mrb_vm *vm, mrb_value *v, int argc)
 // Array = operator +
 static void c_array_plus(mrb_vm *vm, mrb_value *v, int argc)
 {
-  mrb_value *array1 = v[0].handle->array;
-  mrb_value *array2 = v[1].handle->array;
-  int len1 = array1->i;
-  int len2 = array2->i;
+  mrb_value *new_array, *new_handle, *p;
+  int i;
 
   // array2 is []
   if( len2 == 0 ) return;
 
-  mrb_value *new_array = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value)*(len1+len2+1));
+  new_array = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value)*(len1+len2+1));
   if( new_array == NULL ) return;  // ENOMEM
-  mrb_value *new_handle = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value));
+  new_handle = (mrb_value *)mrbc_alloc(vm, sizeof(mrb_value));
 
   // copy array
   new_array[0].tt = MRB_TT_FIXNUM;
   new_array[0].i = len1 + len2;
 
-  int i;
-  mrb_value *p = new_array + 1;
+  p = new_array + 1;
   for( i=0 ; i<len1 ; i++ ){
     *p++ = array1[i+1];
   }
@@ -155,11 +152,12 @@ static void c_array_push(mrb_vm *vm, mrb_value *v, int argc)
 
 static void c_array_pop(mrb_vm *vm, mrb_value *v, int argc)
 {
+  mrb_value *new_array;
   mrb_value *array = v[0].handle->array;
   int len = array[0].i;
 
   v[0] = array[len];
-  mrb_value *new_array = (mrb_value *)mrbc_realloc(vm, array, sizeof(mrb_value)*(len));
+  new_array = (mrb_value *)mrbc_realloc(vm, array, sizeof(mrb_value)*(len));
   new_array[0].i--;
 
 

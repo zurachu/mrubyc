@@ -35,6 +35,7 @@
 mrb_value mrbc_string_new(mrb_vm *vm, const void *src, int len)
 {
   mrb_value value = {.tt = MRB_TT_STRING};
+  uint8_t *str;
 
   /*
     Allocate handle and string buffer.
@@ -43,7 +44,7 @@ mrb_value mrbc_string_new(mrb_vm *vm, const void *src, int len)
   h = (MrbcHandleString *)mrbc_alloc(vm, sizeof(MrbcHandleString));
   if( !h ) return value;		// ENOMEM
 
-  uint8_t *str = mrbc_alloc(vm, len+1);
+  str = mrbc_alloc(vm, len+1);
   if( !str ) {				// ENOMEM
     mrbc_raw_free( h );
     return value;
@@ -142,15 +143,18 @@ void mrbc_string_clear_vm_id(mrb_value *v)
 */
 static void c_string_add(mrb_vm *vm, mrb_value *v, int argc)
 {
+  MrbcHandleString *h1, *h2;
+  mrb_value value;
+
   if( GET_TT_ARG(1) != MRB_TT_STRING ) {
     console_print( "Not support STRING + Other\n" );
     return;
   }
 
-  MrbcHandleString *h1 = GET_ARG(0).h_str;
-  MrbcHandleString *h2 = GET_ARG(1).h_str;
+  h1 = GET_ARG(0).h_str;
+  h2 = GET_ARG(1).h_str;
 
-  mrb_value value = mrbc_string_new(vm, NULL, h1->size + h2->size);
+  value = mrbc_string_new(vm, NULL, h1->size + h2->size);
   if( value.h_str == NULL ) return;		// ENOMEM
 
   memcpy( value.h_str->str,            h1->str, h1->size );
@@ -167,11 +171,13 @@ static void c_string_add(mrb_vm *vm, mrb_value *v, int argc)
 */
 static void c_string_eql(mrb_vm *vm, mrb_value *v, int argc)
 {
+  MrbcHandleString *h1, *h2;
+
   int result = 0;
   if( GET_TT_ARG(1) != MRB_TT_STRING ) goto DONE;
 
-  MrbcHandleString *h1 = GET_ARG(0).h_str;
-  MrbcHandleString *h2 = GET_ARG(1).h_str;
+  h1 = GET_ARG(0).h_str;
+  h2 = GET_ARG(1).h_str;
 
   if( h1->size != h2->size ) goto DONE;	// false
   result = !memcmp(h1->str, h2->str, h1->size);
@@ -205,6 +211,8 @@ static void c_string_size(mrb_vm *vm, mrb_value *v, int argc)
 */
 static void c_string_to_i(mrb_vm *vm, mrb_value *v, int argc)
 {
+  int32_t i;
+
   int base = 10;
   if( argc ) {
     base = GET_INT_ARG(1);
@@ -213,7 +221,7 @@ static void c_string_to_i(mrb_vm *vm, mrb_value *v, int argc)
     }
   }
 
-  int32_t i = mrbc_atoi( MRBC_STRING_CSTR(v), base );
+  i = mrbc_atoi( MRBC_STRING_CSTR(v), base );
 
   mrbc_release(vm, v);
   SET_INT_RETURN( i );
@@ -280,6 +288,8 @@ static void c_string_slice(mrb_vm *vm, mrb_value *v, int argc)
     in case of slice(nth) -> String | nil
   */
   if( argc == 1 && v1->tt == MRB_TT_FIXNUM ) {
+    mrb_value value;
+
     int len = v->h_str->size;
     int idx = v1->i;
     int ch = -1;
@@ -295,7 +305,7 @@ static void c_string_slice(mrb_vm *vm, mrb_value *v, int argc)
     }
     if( ch < 0 ) goto RETURN_NIL;
 
-    mrb_value value = mrbc_string_new(vm, NULL, 1);
+    value = mrbc_string_new(vm, NULL, 1);
     if( !value.h_str ) goto RETURN_NIL;		// ENOMEM
 
     value.h_str->str[0] = ch;
@@ -309,16 +319,19 @@ static void c_string_slice(mrb_vm *vm, mrb_value *v, int argc)
     in case of slice(nth, len) -> String | nil
   */
   if( argc == 2 && v1->tt == MRB_TT_FIXNUM && v2->tt == MRB_TT_FIXNUM ) {
+    mrb_value value;
+    int rlen;
+
     int len = v->h_str->size;
     int idx = v1->i;
     if( idx < 0 ) idx += len;
     if( idx < 0 ) goto RETURN_NIL;
 
-    int rlen = (v2->i < (len - idx)) ? v2->i : (len - idx);
+    rlen = (v2->i < (len - idx)) ? v2->i : (len - idx);
 						// min( v2->i, (len-idx) )
     if( rlen < 0 ) goto RETURN_NIL;
 
-    mrb_value value = mrbc_string_new(vm, v->h_str->str + idx, rlen);
+    value = mrbc_string_new(vm, v->h_str->str + idx, rlen);
     if( !value.h_str ) goto RETURN_NIL;		// ENOMEM
 
     mrbc_release(vm, v);
@@ -347,6 +360,8 @@ static void c_string_insert(mrb_vm *vm, mrb_value *v, int argc)
   int nth;
   int len;
   mrb_value *val;
+  int len1, len2;
+  uint8_t *str;
 
   /*
     in case of self[nth] = val
@@ -377,8 +392,8 @@ static void c_string_insert(mrb_vm *vm, mrb_value *v, int argc)
     return;
   }
 
-  int len1 = v->h_str->size;
-  int len2 = val->h_str->size;
+  len1 = v->h_str->size;
+  len2 = val->h_str->size;
   if( nth < 0 ) nth = len1 + nth;               // adjust to positive number.
   if( len > len1 - nth ) len = len1 - nth;
   if( nth < 0 || nth > len1 || len < 0) {
@@ -386,7 +401,7 @@ static void c_string_insert(mrb_vm *vm, mrb_value *v, int argc)
     return;
   }
 
-  uint8_t *str = mrbc_realloc(vm, MRBC_STRING_CSTR(v), len1 + len2 - len + 1);
+  str = mrbc_realloc(vm, MRBC_STRING_CSTR(v), len1 + len2 - len + 1);
   if( !str ) return;
 
   memmove( str + nth + len2, str + nth + len, len1 - nth - len + 1 );
@@ -416,6 +431,10 @@ static void c_string_ord(mrb_vm *vm, mrb_value *v, int argc)
 static void c_sprintf(mrb_vm *vm, mrb_value *v, int argc)
 {
   static const int BUF_INC_STEP = 32;	// bytes.
+  int buflen, i, ret;
+  char *buf;
+  MrbcPrintf pf;
+  mrb_value value;
 
   mrb_value *format = &GET_ARG(1);
   if( format->tt != MRB_TT_STRING ) {
@@ -423,15 +442,13 @@ static void c_sprintf(mrb_vm *vm, mrb_value *v, int argc)
     return;
   }
 
-  int buflen = BUF_INC_STEP;
-  char *buf = mrbc_alloc(vm, buflen);
+  buflen = BUF_INC_STEP;
+  buf = mrbc_alloc(vm, buflen);
   if( !buf ) { return; }	// ENOMEM raise?
 
-  MrbcPrintf pf;
   mrbc_printf_init( &pf, buf, buflen, MRBC_STRING_CSTR(format) );
 
-  int i = 2;
-  int ret;
+  i = 2;
   while( 1 ) {
     MrbcPrintf pf_bak = pf;
     ret = mrbc_printf_main( &pf );
@@ -521,7 +538,7 @@ static void c_sprintf(mrb_vm *vm, mrb_value *v, int argc)
   buflen = mrbc_printf_len( &pf ) + 1;
   mrbc_realloc(vm, pf.buf, buflen);
 
-  mrb_value value = mrbc_string_new_alloc( vm, pf.buf, buflen );
+  value = mrbc_string_new_alloc( vm, pf.buf, buflen );
 
   mrbc_release(vm, v);
   SET_RETURN(value);

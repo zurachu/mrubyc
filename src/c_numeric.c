@@ -85,6 +85,10 @@ static void c_fixnum_chr(mrb_vm *vm, mrb_value *v, int argc)
 
 static void c_fixnum_to_s(mrb_vm *vm, mrb_value *v, int argc)
 {
+  MrbcPrintf pf;
+  char buf[16];
+  mrb_value value;
+
   int base = 10;
   if( argc ) {
     base = GET_INT_ARG(1);
@@ -93,14 +97,12 @@ static void c_fixnum_to_s(mrb_vm *vm, mrb_value *v, int argc)
     }
   }
 
-  MrbcPrintf pf;
-  char buf[16];
   mrbc_printf_init( &pf, buf, sizeof(buf), NULL );
   pf.fmt.type = 'd';
   mrbc_printf_int( &pf, v->i, base );
   mrbc_printf_end( &pf );
 
-  mrb_value value = mrbc_string_new_cstr(vm, buf);
+  value = mrbc_string_new_cstr(vm, buf);
   SET_RETURN(value);
 }
 #endif

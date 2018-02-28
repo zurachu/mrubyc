@@ -56,6 +56,7 @@ static uint16_t calc_hash(const char *str)
 mrb_sym add_sym(const char *str)
 {
   mrb_sym sym_id = str_to_symid(str);
+  int len;
 
   if( sym_id < 0 ) {
     // check overflow.
@@ -63,7 +64,7 @@ mrb_sym add_sym(const char *str)
       console_printf( "Overflow %s '%s'\n", "MAX_SYMBOLS_COUNT", str );
       return -1;
     }
-    int len = strlen(str);
+    len = strlen(str);
     if( len == 0 ) return -1;
     len++;
     if( len > (MAX_SYMBOLS_SIZE - (sym_table_pos - sym_table)) ) {
