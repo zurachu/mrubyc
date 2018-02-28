@@ -86,7 +86,6 @@ typedef struct RClass {
 */
 typedef struct RInstance {
   struct RClass *cls;    // class
-  uint8_t data[];
 } mrb_instance;
 
 

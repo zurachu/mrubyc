@@ -40,6 +40,7 @@ const int TIMESLICE_TICK = 10; // 10 * 1ms(HardwareTimer)  255 max
 
 #define VM2TCB(p) ((MrbcTcb *)((uint8_t *)p - offsetof(MrbcTcb, vm)))
 
+#define RINSTANCE_DATA(p) ((uint8_t *)((struct RInstance *)(p) + 1))
 
 /***** Typedefs *************************************************************/
 /***** Function prototypes **************************************************/
@@ -267,7 +268,7 @@ static void c_mutex_new(mrb_vm *vm, mrb_value *v, int argc)
   *v = mrbc_instance_new(vm, v->u.cls, sizeof(MrbcMutex));
   if( !v->u.instance ) return;
 
-  mrbc_mutex_init( (MrbcMutex *)(v->u.instance->data) );
+  mrbc_mutex_init( (MrbcMutex *)(RINSTANCE_DATA(v->u.instance)) );
 }
 
 
@@ -277,7 +278,7 @@ static void c_mutex_new(mrb_vm *vm, mrb_value *v, int argc)
 */
 static void c_mutex_lock(mrb_vm *vm, mrb_value *v, int argc)
 {
-  int r = mrbc_mutex_lock( (MrbcMutex *)v->u.instance->data, VM2TCB(vm) );
+  int r = mrbc_mutex_lock( (MrbcMutex *)(RINSTANCE_DATA(v->u.instance)), VM2TCB(vm) );
   if( r == 0 ) return;  // return self
 
   // raise ThreadError
@@ -291,7 +292,7 @@ static void c_mutex_lock(mrb_vm *vm, mrb_value *v, int argc)
 */
 static void c_mutex_unlock(mrb_vm *vm, mrb_value *v, int argc)
 {
-  int r = mrbc_mutex_unlock( (MrbcMutex *)v->u.instance->data, VM2TCB(vm) );
+  int r = mrbc_mutex_unlock( (MrbcMutex *)(RINSTANCE_DATA(v->u.instance)), VM2TCB(vm) );
   if( r == 0 ) return;  // return self
 
   // raise ThreadError
@@ -305,7 +306,7 @@ static void c_mutex_unlock(mrb_vm *vm, mrb_value *v, int argc)
 */
 static void c_mutex_trylock(mrb_vm *vm, mrb_value *v, int argc)
 {
-  int r = mrbc_mutex_trylock( (MrbcMutex *)v->u.instance->data, VM2TCB(vm) );
+  int r = mrbc_mutex_trylock( (MrbcMutex *)(RINSTANCE_DATA(v->u.instance)), VM2TCB(vm) );
   if( r == 0 ) {
     SET_TRUE_RETURN();
   } else {
