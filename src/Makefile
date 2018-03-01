@@ -7,20 +7,28 @@
 #  This file is distributed under BSD 3-Clause License.
 #
 
-CFLAGS = -Wall -Wpointer-arith -g -DMRBC_DEBUG  # -std=c99 -pedantic -pedantic-errors
+CC = pcc33
+AR = lib33
 
-COMMON_SRCS = alloc.c class.c console.c global.c load.c rrt0.c static.c symbol.c value.c vm.c hal/hal.c
+CFLAGS = -c -O2 -Wall -gp=0x0 -near -g -DMRBC_DEBUG
+CFLAGS += -I..\piece\include
+ARFLAGS =
+
+COMMON_SRCS = alloc.c class.c console.c global.c load.c rrt0.c static.c symbol.c value.c vm.c
 RUBY_LIB_SRCS = c_array.c c_hash.c c_ext.c c_numeric.c c_range.c c_string.c c_symbol.c
 TARGET = libmrubyc.a
 OBJS = $(COMMON_SRCS:.c=.o) $(RUBY_LIB_SRCS:.c=.o)
 
 
 all:
-	if [ ! -e hal ]; then ln -s hal_posix hal; fi
+	if not exist hal mklink /D hal hal_piece
 	$(MAKE) $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $?
+
+.c.o:
+	$(CC) $(CFLAGS) $<
 
 class.o: class.c value.h vm_config.h class.h vm.h static.h global.h \
   console.h c_array.h c_numeric.h c_string.h c_range.h c_ext.h

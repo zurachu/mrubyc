@@ -71,4 +71,6 @@
 /* USE String. Support String class */
 #define MRBC_USE_STRING 1
 
+#define MRBC_NO_TIMER
+
 #endif
