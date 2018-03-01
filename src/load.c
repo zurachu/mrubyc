@@ -160,19 +160,21 @@ static mrb_irep * load_irep_1(struct VM *vm, const uint8_t **pos)
     } break;
 #endif
     case 1: { // IREP_TT_FIXNUM
-      char buf[obj_size+1];
+      char* buf = (char*)malloc(obj_size+1);
       memcpy(buf, p, obj_size);
       buf[obj_size] = '\0';
       obj->tt = MRB_TT_FIXNUM;
       obj->u.i = atol(buf);
+      free(buf);
     } break;
 #if MRBC_USE_FLOAT
     case 2: { // IREP_TT_FLOAT
-      char buf[obj_size+1];
+      char* buf = (char*)malloc(obj_size+1);
       memcpy(buf, p, obj_size);
       buf[obj_size] = '\0';
       obj->tt = MRB_TT_FLOAT;
       obj->u.d = atof(buf);
+      free(buf);
     } break;
 #endif
     default:
