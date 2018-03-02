@@ -16,7 +16,7 @@ ARFLAGS =
 
 COMMON_SRCS = alloc.c class.c console.c global.c load.c rrt0.c static.c symbol.c value.c vm.c
 RUBY_LIB_SRCS = c_array.c c_hash.c c_ext.c c_numeric.c c_range.c c_string.c c_symbol.c
-TARGET = libmrubyc.a
+TARGET = libmrubyc.lib
 OBJS = $(COMMON_SRCS:.c=.o) $(RUBY_LIB_SRCS:.c=.o)
 
 
