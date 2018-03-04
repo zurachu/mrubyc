@@ -39,7 +39,7 @@ extern "C" {
 # define hal_init()        ((void)0)
 # define hal_enable_irq()  ((void)0)
 # define hal_disable_irq() ((void)0)
-# define hal_idle_cpu()    (CyDelay(1), mrbc_tick())
+# define hal_idle_cpu()    (mrbc_tick())
 
 #endif
 
