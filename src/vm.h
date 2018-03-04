@@ -104,12 +104,12 @@ inline static uint32_t bin_to_uint32( const void *s )
 {
   uint8_t *p = (uint8_t *)s;
   uint32_t x = *p++;
-  int i;
-  for(i = 1; i < 4; i++)
-  {
-    x <<= 8;
-    x += *p++;
-  }
+  x <<= 8;
+  x |= *p++;
+  x <<= 8;
+  x |= *p++;
+  x <<= 8;
+  x |= *p;
   return x;
 }
 
@@ -125,7 +125,7 @@ inline static uint16_t bin_to_uint16( const void *s )
 {
   uint8_t *p = (uint8_t *)s;
   uint16_t x = *p++ << 8;
-  x += *p;
+  x |= *p;
   return x;
 }
 
