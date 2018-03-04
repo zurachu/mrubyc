@@ -25,7 +25,7 @@ all:
 	$(MAKE) $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(AR) $(ARFLAGS) $@ $?
+	$(AR) $(ARFLAGS) $@ $^
 
 .c.o:
 	$(CC) $(CFLAGS) $<
