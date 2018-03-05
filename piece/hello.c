@@ -5,10 +5,12 @@
 
 #include <piece.h>
 
+#include "define_piece.h"
+
 unsigned char vbuff[128*88];
 static unsigned char draw;
 
-extern const uint8_t basic_sample01[];
+extern const uint8_t test[];
 
 #define MEMORY_SIZE (1024*10)
 static uint8_t memory_pool[MEMORY_SIZE];
@@ -50,11 +52,14 @@ void pceAppInit(void)
 		pceFontPutStr("VM open Error\n");
 		goto end;
 	}
-	if(mrbc_load_mrb(vm, basic_sample01) != 0)
+	if(mrbc_load_mrb(vm, test) != 0)
 	{
 		pceFontPrintf("mrb load Error: %08X\n", vm->error_code);
 		goto end;
 	}
+
+	define_pceLcd();
+
 	mrbc_vm_begin(vm);
 	mrbc_vm_run(vm);
 

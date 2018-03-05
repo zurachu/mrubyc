@@ -32,7 +32,7 @@ MRBC = ..\..\..\build\host\bin\mrbc
 PRGNAME = hello
 FILENAME = hello
 CAPTION = HelloWorld
-OBJS =	hello.o hal.o basic_sample01.o \
+OBJS =	hello.o hal.o define_piece.o test.o \
 	..\src\libmrubyc.lib
 
 $(PRGNAME).srf : $(OBJS)
