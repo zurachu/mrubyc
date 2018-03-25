@@ -14,11 +14,11 @@ mrubyc_lib:
 	make all -C src
 
 mrubyc_bin:
-	make all -C sample_c
+	make pex -C piece
 
 clean:
 	make clean -C src
-	make clean -C sample_c
+	make clean -C piece
 
 package: clean
 	@LANG=C ;\
